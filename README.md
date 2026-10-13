@@ -33,7 +33,7 @@ src/
     hud.tsx                Anzeige im Lauf
     menu.tsx               Hauptmenü, Optionen, Shop, Skins, Werkstatt
     run-overlays.tsx       Rüstungswahl, Level-Karten, Glücksrad, Pause, Tod
-    castle-screen.tsx      Burg-Modus: Werkzeugleiste, Upgrade-Panel, Angriffs-Anzeige
+    castle-screen.tsx      Königreich: Rohstoffleiste, Baumenü, Upgrade-Panel, Angriffs-Anzeige
     ui.tsx                 Kleine Bausteine
   game/
     engine/
@@ -46,10 +46,11 @@ src/
     meta.ts                Gold, Shop, Speicherstand
     audio.ts               Musik und Soundeffekte (WebAudio)
     castle/
-      model.ts             Burg: Gebäude, Kosten, Stufen 1–5, Limits, Speicherstand
-      art.ts               Burg: isometrische Gebäude-Grafik je Stufe, Wiese, Bäume
-      scene.ts             Burg: Kamera, Bauen, Verschieben, Effekte, Zeichnen
-      raid.ts              Burg: Angriffs-Simulation (Gegner, Türme, Verteidiger)
+      model.ts             Königreich: Gebäude, Stufen 1–5, Kosten, Rohstoffe, AFK-Produktion, Speicherstand
+      textures.ts          Königreich: prozedurale Texturen und Materialien (Stein, Holz, Ziegel …)
+      meshes.ts            Königreich: 3D-Modelle aller Gebäude je Stufe, Stadtmauer, Landschaft
+      scene.ts             Königreich: Three.js-Szene, Kamera, Bauen, Verschieben, Ernte-Blasen, Angriffe
+      raid.ts              Königreich: Angriffs-Simulation an der festen Mauer
     icons.tsx              Symbole
 tests/                     Unit-Tests
 scripts/                   Spieltest und Einzelseiten-Build
@@ -61,12 +62,13 @@ scripts/                   Spieltest und Einzelseiten-Build
 2. **Drachenrüstung**: bei Stab-Stufe 5 wählst du Feuer oder Eis.
 3. **Lavadrache**: sobald zwei Fähigkeiten voll ausgebaut sind. Feueratem über den „Atem“-Knopf.
 
-## Burg-Modus
+## Burg-Modus (Königreich)
 
-- Schloss, Türme, Häuser und Mauern frei platzieren und verschieben (Gebäude antippen, festhalten, ziehen).
-- Mauern per Tippen oder Ziehen setzen; benachbarte Mauern verbinden sich.
-- Jedes Gebäude hat Stufe 1–5, jede Stufe sieht deutlich anders aus. Gebäude können höchstens die Stufe des Schlosses erreichen.
-- Gold kommt aus dem Survivor-Modus. Angriffe starten nur über den Knopf „Angriff“; ein Sieg bringt Gold und macht den nächsten Angriff härter.
+- 3D-Ansicht (Three.js) mit Licht, Schatten und Texturen; wird erst beim Öffnen geladen.
+- Feste Stadtmauer um einen 36 × 36 Felder großen Innenhof. Sie lässt sich nicht verschieben, nur upgraden (Palisade bis Königsmauer).
+- Gebäude: Schloss, Wachturm, Wohnhaus, Feld, Bauernhof, Steinbruch, Kohlewerk, Goldmine. Alle bis Stufe 5, jede Stufe sichtbar prächtiger. Die Schloss-Stufe begrenzt die anderen.
+- Produktion läuft auch, wenn das Spiel geschlossen ist (bis zu 8 Stunden Speicher). Goldminen liefern Gold, die anderen Nahrung, Stein und Kohle für Upgrades.
+- Angriffe starten nur über den Knopf; die Mauer hält frühe Angriffe sicher ab.
 
 ## Deployment
 

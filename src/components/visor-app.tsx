@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
 import { mountGame, type Card, type GameHandle, type Hud as HudData, type Mode, type Summary } from "@/game/engine";
 import { defaultMeta, loadMeta, saveMeta, type Meta } from "@/game/meta";
-import { CastleScreen } from "./castle-screen";
 import { Hud } from "./hud";
 import { MenuScreen, type Panel } from "./menu";
 import { ArmorSheet, DeathScreen, LevelSheet, LuckySheet, PauseSheet } from "./run-overlays";
+
+// Der Burg-Modus bringt Three.js mit; er wird erst beim Öffnen geladen.
+const CastleScreen = lazy(() => import("./castle-screen").then((m) => ({ default: m.CastleScreen })));
 
 const IN_RUN: ReadonlySet<Mode> = new Set(["play", "dying", "pause", "level", "lucky", "armor"]);
 
@@ -70,9 +72,6 @@ export function VisorApp() {
         {inRun && <div className="vignette" aria-hidden />}
         {inRun && hud && <Hud hud={hud} mode={mode} onPause={onPause} onBreath={onBreath} />}
 
-        {mode === "menu" && panel === "castle" && (
-          <CastleScreen meta={meta} onMeta={commit} onClose={() => setPanel("home")} />
-        )}
         {mode === "menu" && panel !== "castle" && (
           <MenuScreen
             meta={meta}
@@ -110,6 +109,11 @@ export function VisorApp() {
           />
         )}
       </div>
+      {mode === "menu" && panel === "castle" && (
+        <Suspense fallback={<div className="kingdom kingdom-loading">Königreich wird geladen …</div>}>
+          <CastleScreen meta={meta} onMeta={commit} onClose={() => setPanel("home")} />
+        </Suspense>
+      )}
     </main>
   );
 }

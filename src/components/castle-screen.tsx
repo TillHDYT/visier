@@ -2,36 +2,55 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowUp,
-  BrickWall,
   Castle as CastleIcon,
   Check,
   Coins,
+  Factory,
+  Flame,
+  Gem,
+  Hammer,
   House,
+  Mountain,
+  Package,
+  Pickaxe,
+  Shield,
+  Sprout,
   Star,
   Swords,
   TowerControl,
-  Trash2,
+  Tractor,
+  Wheat,
   X,
 } from "lucide-react";
 import {
   KIND_NAME,
   LEVEL_TITLE,
   MAX_LEVEL,
-  PLACE_COST,
+  PRODUCTION,
+  RES_NAME,
+  STORE_HOURS,
+  capacity,
   castleLevel,
+  collect,
+  costFor,
   countOf,
   limitFor,
+  pending,
+  place,
   placeBlock,
-  removeWall,
+  rateOf,
   statsFor,
   upgrade,
   upgradeBlock,
   upgradeCost,
-  upgradeWalls,
-  wallsAt,
+  upgradeWall,
+  wallUpgradeBlock,
+  walletOf,
   type Building,
   type BuildingKind,
   type Castle,
+  type Cost,
+  type Resource,
 } from "@/game/castle/model";
 import { CastleScene, type PlaceView, type RaidView } from "@/game/castle/scene";
 import type { Meta } from "@/game/meta";
@@ -39,115 +58,176 @@ import type { Meta } from "@/game/meta";
 const KIT_GOLD = 280;
 
 const ICON: Record<BuildingKind, typeof House> = {
-  wall: BrickWall,
+  castle: CastleIcon,
   tower: TowerControl,
   house: House,
-  castle: CastleIcon,
+  field: Sprout,
+  farm: Tractor,
+  mine: Pickaxe,
+  coal: Factory,
+  goldmine: Gem,
 };
+
+const RES_ICON: Record<Resource, typeof Coins> = { gold: Coins, food: Wheat, stone: Mountain, coal: Flame };
+
+const BUILD_ORDER: BuildingKind[] = ["goldmine", "field", "farm", "mine", "coal", "house", "tower"];
+
+const BLURB: Record<BuildingKind, string> = {
+  castle: "Herz des Königreichs. Seine Stufe begrenzt alle anderen Gebäude.",
+  tower: "Schießt auf Angreifer innerhalb der Mauer.",
+  house: "Stellt Verteidiger, die an die Mauer eilen.",
+  field: "Erntet Nahrung.",
+  farm: "Erntet viel Nahrung.",
+  mine: "Bricht Stein für Upgrades.",
+  coal: "Brennt Kohle für hohe Stufen.",
+  goldmine: "Fördert Gold – auch wenn du nicht spielst.",
+};
+
+function fmt(n: number) {
+  return n >= 10000 ? `${(n / 1000).toFixed(n >= 100000 ? 0 : 1)}k` : String(Math.floor(n));
+}
 
 type Props = { meta: Meta; onMeta: (next: Meta) => void; onClose: () => void };
 
-/** Burg-Modus: Königreich bauen, upgraden und Angriffe manuell starten. */
+/** Königreich: Gebäude bauen, upgraden, ernten; Angriffe starten. */
 export function CastleScreen({ meta, onMeta, onClose }: Props) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const glRef = useRef<HTMLCanvasElement>(null);
+  const uiRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<CastleScene | null>(null);
   const metaRef = useRef(meta);
   metaRef.current = meta;
   const kitRef = useRef(false);
-  const [selected, setSelected] = useState<number | null>(null);
+  const [selected, setSelected] = useState<number | "wall" | null>(null);
   const [placing, setPlacing] = useState<PlaceView | null>(null);
   const [raid, setRaid] = useState<RaidView | null>(null);
+  const [sheet, setSheet] = useState(false);
   const [toast, setToast] = useState<{ text: string; n: number } | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  const [failed, setFailed] = useState(false);
 
   const say = useCallback((text: string) => setToast((t) => ({ text, n: (t?.n ?? 0) + 1 })), []);
-
   const commit = useCallback(
     (castle: Castle, coins: number) => onMeta({ ...metaRef.current, castle, coins }),
     [onMeta],
   );
 
+  const harvest = useCallback(
+    (ids?: number[]) => {
+      const m = metaRef.current;
+      const t = Date.now();
+      const before = m.castle.buildings;
+      const h = collect(m.castle, m.coins, t, ids);
+      const parts = Object.entries(h.got).filter(([, v]) => v);
+      if (!parts.length) return;
+      onMeta({ ...m, castle: h.castle, coins: h.coins });
+      for (const b of before) {
+        const amount = pending(b, t);
+        const p = PRODUCTION[b.kind];
+        if (p && amount > 0 && (!ids || ids.includes(b.id))) sceneRef.current?.harvested(b.id, amount, p.res);
+      }
+    },
+    [onMeta],
+  );
+
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const gl = glRef.current;
+    const ui = uiRef.current;
+    if (!gl || !ui) return;
     const m = metaRef.current;
-    const scene = new CastleScene(canvas, m.castle, m.coins, {
-      onSelect: setSelected,
-      onCommit: commit,
-      onToast: say,
-      onRaid: setRaid,
-      onPlace: setPlacing,
-    });
+    let scene: CastleScene;
+    try {
+      scene = new CastleScene(gl, ui, m.castle, m.coins, {
+        onSelect: setSelected,
+        onCommit: commit,
+        onCollect: (ids) => harvest(ids),
+        onToast: say,
+        onRaid: setRaid,
+        onPlace: setPlacing,
+      });
+    } catch {
+      setFailed(true);
+      return;
+    }
     scene.setData(m.castle, m.coins, m.warriors, m.sfxOn);
     sceneRef.current = scene;
     return () => {
       scene.destroy();
       sceneRef.current = null;
     };
-  }, [commit, say]);
+  }, [commit, harvest, say]);
 
   useEffect(() => {
     sceneRef.current?.setData(meta.castle, meta.coins, meta.warriors, meta.sfxOn);
   }, [meta]);
 
-  // Startpaket beim allerersten Besuch.
+  // Uhr für Produktionsanzeigen
   useEffect(() => {
-    if (kitRef.current || metaRef.current.castle.kit) return;
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  // Startpaket und Hinweis auf AFK-Gold
+  useEffect(() => {
+    if (kitRef.current) return;
     kitRef.current = true;
     const m = metaRef.current;
-    onMeta({ ...m, coins: m.coins + KIT_GOLD, castle: { ...m.castle, kit: true } });
-    say(`Startpaket: +${KIT_GOLD} Gold`);
+    const gold = m.castle.buildings.reduce(
+      (sum, b) => sum + (PRODUCTION[b.kind]?.res === "gold" ? pending(b, Date.now()) : 0),
+      0,
+    );
+    if (!m.castle.kit) {
+      onMeta({ ...m, coins: m.coins + KIT_GOLD, castle: { ...m.castle, kit: true } });
+      say(`Willkommen im Königreich: +${KIT_GOLD} Gold`);
+    } else if (gold > 0) say(`Deine Goldminen haben ${gold} Gold gefördert – antippen zum Einsammeln`);
   }, [onMeta, say]);
 
   useEffect(() => {
     if (!toast) return;
-    const id = window.setTimeout(() => setToast(null), 2200);
+    const id = window.setTimeout(() => setToast(null), 2600);
     return () => window.clearTimeout(id);
   }, [toast]);
 
   const castle = meta.castle;
-  const coins = meta.coins;
+  const wallet = walletOf(castle, meta.coins);
   const level = castleLevel(castle);
-  const building = selected !== null ? (castle.buildings.find((b) => b.id === selected) ?? null) : null;
+  const building = typeof selected === "number" ? (castle.buildings.find((b) => b.id === selected) ?? null) : null;
   const scene = () => sceneRef.current;
+  const ready = castle.buildings.some((b) => pending(b, now) >= Math.max(1, rateOf(b) * 0.05));
 
   function doUpgrade(b: Building) {
-    const r = upgrade(castle, b.id, coins);
+    const r = upgrade(castle, b.id, meta.coins);
     if (!r) return;
     commit(r.castle, r.coins);
     scene()?.celebrate(b.id, b.level + 1);
   }
 
-  function doUpgradeWalls(lvl: number) {
-    const r = upgradeWalls(castle, lvl, coins);
-    if (!r.count) return;
+  function doWall() {
+    const r = upgradeWall(castle, meta.coins);
+    if (!r) return;
     commit(r.castle, r.coins);
-    for (const b of castle.buildings) {
-      if (b.kind === "wall" && b.level === lvl && r.castle.buildings.find((it) => it.id === b.id)?.level === lvl + 1) {
-        scene()?.celebrate(b.id, lvl + 1, false);
-      }
-    }
-    say(`${r.count} Mauern auf Stufe ${lvl + 1}`);
+    scene()?.celebrate("wall", r.castle.wall);
   }
 
-  function doRemove(b: Building) {
-    const next = removeWall(castle, b.id);
-    if (!next) return;
-    scene()?.select(null);
-    commit(next, coins);
-  }
-
-  function pick(kind: BuildingKind) {
-    if (kind === "castle") {
-      const keep = castle.buildings.find((b) => b.kind === "castle");
-      if (keep) scene()?.focus(keep.id);
-      return;
-    }
-    const block = placeBlock(castle, kind, coins);
+  function startPlace(kind: BuildingKind) {
+    setSheet(false);
+    const block = placeBlock(castle, kind, meta.coins);
     if (block) {
       say(block);
       return;
     }
     scene()?.beginPlace(kind);
+  }
+
+  function confirmPlace() {
+    const spot = scene()?.confirmPlace();
+    if (!spot) return;
+    const r = place(castle, spot.kind, spot.x, spot.y, meta.coins);
+    if (!r) {
+      say("Hier ist kein Platz");
+      return;
+    }
+    commit(r.castle, r.coins);
+    scene()?.celebrate(r.castle.nextId - 1, 1, false);
   }
 
   function finishRaid() {
@@ -158,31 +238,60 @@ export function CastleScreen({ meta, onMeta, onClose }: Props) {
     scene()?.endRaid();
   }
 
+  if (failed) {
+    return (
+      <section className="kingdom kingdom-fallback">
+        <p className="font-display text-2xl">3D wird hier nicht unterstützt</p>
+        <p className="text-sm font-medium">
+          Dein Browser kann WebGL nicht starten. Versuch es in einem aktuellen Browser.
+        </p>
+        <button type="button" className="btn btn-go" onClick={onClose}>
+          Zurück
+        </button>
+      </section>
+    );
+  }
+
   return (
-    <section className="kingdom" aria-label="Burg">
-      <canvas ref={canvasRef} className="kingdom-canvas" aria-label="Königreich" />
+    <section className="kingdom" aria-label="Königreich">
+      <canvas ref={glRef} className="kingdom-canvas" aria-hidden />
+      <canvas ref={uiRef} className="kingdom-canvas kingdom-ui" aria-label="Königreich, ziehen zum Bewegen" />
 
       <header className="kingdom-top">
         <button type="button" className="icon-btn" aria-label="Zurück zum Menü" onClick={onClose}>
           <ArrowLeft size={20} strokeWidth={2.6} />
         </button>
-        <span className="kingdom-gold">
-          <Coins size={18} strokeWidth={2.6} aria-hidden /> <span className="tabular-nums">{coins}</span>
-        </span>
-        {raid ? (
-          <span className="kingdom-raid-label">Angriff {raid.level}</span>
-        ) : (
+        <div className="kingdom-res" aria-label="Rohstoffe">
+          {(["gold", "food", "stone", "coal"] as Resource[]).map((r) => {
+            const Icon = RES_ICON[r];
+            return (
+              <span key={r} className={`res res-${r}`} title={RES_NAME[r]}>
+                <Icon size={15} strokeWidth={2.6} aria-hidden />
+                <span className="tabular-nums">{fmt(wallet[r])}</span>
+              </span>
+            );
+          })}
+        </div>
+      </header>
+
+      {!raid && (
+        <div className="kingdom-side">
           <button type="button" className="btn btn-pink kingdom-attack" onClick={() => scene()?.startRaid()}>
             <Swords size={18} strokeWidth={2.6} aria-hidden /> Angriff {castle.raid}
           </button>
-        )}
-      </header>
+          {ready && (
+            <button type="button" className="btn btn-go kingdom-attack" onClick={() => harvest()}>
+              <Package size={18} strokeWidth={2.6} aria-hidden /> Alles ernten
+            </button>
+          )}
+        </div>
+      )}
 
       {raid && !raid.result && (
         <div className="kingdom-raid">
           <div className="flex items-center justify-between text-sm font-bold">
             <span>
-              Gegner {raid.left}/{raid.total}
+              Angriff {raid.level} · Gegner {raid.left}/{raid.total}
             </span>
             <span>Schloss</span>
           </div>
@@ -197,11 +306,11 @@ export function CastleScreen({ meta, onMeta, onClose }: Props) {
 
       {raid?.result && (
         <div className="kingdom-result anim-pop" role="dialog" aria-label="Ergebnis">
-          <h2 className="font-display text-4xl leading-none">{raid.result === "win" ? "Sieg!" : "Gefallen"}</h2>
+          <h2 className="font-display text-4xl leading-none">{raid.result === "win" ? "Sieg!" : "Bresche!"}</h2>
           <p className="text-sm font-bold">
             {raid.result === "win"
-              ? `Die Burg hält. +${raid.reward} Gold, der nächste Angriff wird härter.`
-              : "Das Schloss ist gefallen. Alles wird wieder aufgebaut – upgrade Mauern und Türme und versuch es nochmal."}
+              ? `Die Mauer hält. +${raid.reward} Gold, der nächste Angriff wird härter.`
+              : "Die Angreifer sind durchgebrochen. Nichts geht verloren – baue Mauer und Türme aus."}
           </p>
           <button type="button" className="btn btn-go" onClick={finishRaid}>
             {raid.result === "win" ? `+${raid.reward} Gold einsammeln` : "Weiter"}
@@ -217,41 +326,17 @@ export function CastleScreen({ meta, onMeta, onClose }: Props) {
 
       {!raid && placing && (
         <div className="kingdom-panel">
-          {placing.kind === "wall" ? (
-            <>
-              <p className="font-display text-xl leading-none">Mauern bauen</p>
-              <p className="text-sm font-medium">
-                Tippen oder ziehen setzt Mauern ({PLACE_COST.wall} Gold je Stück). Mit zwei Fingern bewegst du die
-                Karte.
-              </p>
-              <p className="text-xs font-bold text-muted">
-                {countOf(castle, "wall")}/{limitFor("wall", level)} Mauern
-              </p>
-              <button type="button" className="btn btn-go" onClick={() => scene()?.cancelPlace()}>
-                <Check size={18} strokeWidth={2.8} aria-hidden /> Fertig
-              </button>
-            </>
-          ) : (
-            <>
-              <p className="font-display text-xl leading-none">
-                {KIND_NAME[placing.kind]} platzieren · {PLACE_COST[placing.kind as "tower" | "house"]} Gold
-              </p>
-              <p className="text-sm font-medium">Ziehe das Gebäude an seinen Platz.</p>
-              <div className="grid grid-cols-2 gap-2">
-                <button type="button" className="btn btn-ink" onClick={() => scene()?.cancelPlace()}>
-                  <X size={18} strokeWidth={2.8} aria-hidden /> Abbrechen
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-go"
-                  disabled={!placing.valid}
-                  onClick={() => scene()?.confirmPlace()}
-                >
-                  <Check size={18} strokeWidth={2.8} aria-hidden /> Bauen
-                </button>
-              </div>
-            </>
-          )}
+          <p className="font-display text-xl leading-none">{KIND_NAME[placing.kind]} bauen</p>
+          <CostRow cost={costFor(placing.kind, 1)} wallet={wallet} />
+          <p className="text-sm font-medium">Ziehe das Gebäude an seinen Platz innerhalb der Mauer.</p>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" className="btn btn-ink" onClick={() => scene()?.cancelPlace()}>
+              <X size={18} strokeWidth={2.8} aria-hidden /> Abbrechen
+            </button>
+            <button type="button" className="btn btn-go" disabled={!placing.valid} onClick={confirmPlace}>
+              <Check size={18} strokeWidth={2.8} aria-hidden /> Bauen
+            </button>
+          </div>
         </div>
       )}
 
@@ -259,47 +344,108 @@ export function CastleScreen({ meta, onMeta, onClose }: Props) {
         <BuildingPanel
           castle={castle}
           building={building}
-          coins={coins}
+          coins={meta.coins}
+          now={now}
           onUpgrade={() => doUpgrade(building)}
-          onUpgradeWalls={() => doUpgradeWalls(building.level)}
-          onRemove={() => doRemove(building)}
+          onHarvest={() => harvest([building.id])}
           onClose={() => scene()?.select(null)}
         />
       )}
 
-      {!raid && !placing && !building && (
-        <nav className="kingdom-tools" aria-label="Bauen">
-          {(["wall", "tower", "house", "castle"] as const).map((kind) => {
-            const Icon = ICON[kind];
-            const n = countOf(castle, kind);
-            const max = limitFor(kind, level);
-            return (
-              <button key={kind} type="button" className="kingdom-tool" onClick={() => pick(kind)}>
-                <Icon size={26} strokeWidth={2.4} aria-hidden />
-                <span className="font-display text-base leading-none">{KIND_NAME[kind]}</span>
-                <span className="text-xs font-bold tabular-nums">
-                  {kind === "castle" ? `Stufe ${level}` : `${n}/${max} · ${PLACE_COST[kind]} G`}
-                </span>
-              </button>
-            );
-          })}
-        </nav>
+      {!raid && !placing && selected === "wall" && (
+        <WallPanel castle={castle} coins={meta.coins} onUpgrade={doWall} onClose={() => scene()?.select(null)} />
+      )}
+
+      {!raid && !placing && selected === null && !sheet && (
+        <button type="button" className="kingdom-build" onClick={() => setSheet(true)} aria-label="Bauen">
+          <Hammer size={30} strokeWidth={2.4} aria-hidden />
+          <span className="font-display text-sm leading-none">Bauen</span>
+        </button>
+      )}
+
+      {!raid && !placing && sheet && (
+        <div className="kingdom-sheet anim-pop" role="dialog" aria-label="Bauen">
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-2xl leading-none">Bauen</h2>
+            <button type="button" className="icon-btn" aria-label="Schließen" onClick={() => setSheet(false)}>
+              <X size={18} strokeWidth={2.6} />
+            </button>
+          </div>
+          <ul className="kingdom-list">
+            {BUILD_ORDER.map((kind) => {
+              const Icon = ICON[kind];
+              const n = countOf(castle, kind);
+              const max = limitFor(kind, level);
+              const p = PRODUCTION[kind];
+              const block = placeBlock(castle, kind, meta.coins);
+              return (
+                <li key={kind}>
+                  <button
+                    type="button"
+                    className="kingdom-item"
+                    onClick={() => startPlace(kind)}
+                    aria-disabled={!!block}
+                  >
+                    <span className="kingdom-badge" aria-hidden>
+                      <Icon size={24} strokeWidth={2.4} />
+                    </span>
+                    <span className="min-w-0 flex-1 text-left">
+                      <span className="flex items-baseline justify-between gap-2">
+                        <span className="font-display text-lg leading-none">{KIND_NAME[kind]}</span>
+                        <span className={n >= max ? "text-xs font-bold text-pink" : "text-xs font-bold"}>
+                          {n}/{max}
+                        </span>
+                      </span>
+                      <span className="block text-xs font-medium">
+                        {p ? `+${p.perHour[0]} ${RES_NAME[p.res]}/Std. · ` : ""}
+                        {BLURB[kind]}
+                      </span>
+                      <CostRow cost={costFor(kind, 1)} wallet={wallet} />
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="text-xs font-medium text-muted">Mehr Plätze gibt es mit jeder Schloss-Stufe.</p>
+        </div>
       )}
     </section>
   );
 }
 
-type PanelProps = {
-  castle: Castle;
-  building: Building;
-  coins: number;
-  onUpgrade: () => void;
-  onUpgradeWalls: () => void;
-  onRemove: () => void;
-  onClose: () => void;
-};
+function CostRow({ cost, wallet }: { cost: Cost; wallet: Record<Resource, number> }) {
+  return (
+    <span className="cost-row">
+      {(Object.entries(cost) as [Resource, number][]).map(([r, v]) => {
+        const Icon = RES_ICON[r];
+        return (
+          <span key={r} className={wallet[r] < v ? "cost lack" : "cost"}>
+            <Icon size={13} strokeWidth={2.6} aria-hidden /> {fmt(v)}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
+function Stars({ level }: { level: number }) {
+  return (
+    <span className="kingdom-stars" aria-label={`Stufe ${level} von ${MAX_LEVEL}`}>
+      {Array.from({ length: MAX_LEVEL }, (_, i) => (
+        <Star key={i} size={16} strokeWidth={2.4} className={i < level ? "on" : ""} aria-hidden />
+      ))}
+      <span className="text-xs font-bold">
+        Stufe {level}/{MAX_LEVEL}
+      </span>
+    </span>
+  );
+}
 
 function statLine(kind: BuildingKind, level: number, boosters: number): string {
+  const p = PRODUCTION[kind];
+  if (p)
+    return `${p.perHour[level - 1]} ${RES_NAME[p.res]} pro Stunde · Speicher ${p.perHour[level - 1] * STORE_HOURS}`;
   const s = statsFor(kind, level, boosters);
   const parts = [`${s.hp} Leben`];
   if (s.dmg) parts.push(`${s.dmg} Schaden`);
@@ -309,12 +455,23 @@ function statLine(kind: BuildingKind, level: number, boosters: number): string {
   return parts.join(" · ");
 }
 
-function BuildingPanel({ castle, building: b, coins, onUpgrade, onUpgradeWalls, onRemove, onClose }: PanelProps) {
+type PanelProps = {
+  castle: Castle;
+  building: Building;
+  coins: number;
+  now: number;
+  onUpgrade: () => void;
+  onHarvest: () => void;
+  onClose: () => void;
+};
+
+function BuildingPanel({ castle, building: b, coins, now, onUpgrade, onHarvest, onClose }: PanelProps) {
   const cost = upgradeCost(b);
   const block = upgradeBlock(castle, b, coins);
-  const max = b.level >= MAX_LEVEL;
-  const walls = b.kind === "wall" ? wallsAt(castle, b.level) : null;
   const Icon = ICON[b.kind];
+  const p = PRODUCTION[b.kind];
+  const stored = pending(b, now);
+  const wallet = walletOf(castle, coins);
   return (
     <div className="kingdom-panel">
       <div className="flex items-start gap-3">
@@ -325,48 +482,92 @@ function BuildingPanel({ castle, building: b, coins, onUpgrade, onUpgradeWalls, 
           <p className="font-display text-xl leading-none">
             {KIND_NAME[b.kind]} · {LEVEL_TITLE[b.kind][b.level - 1]}
           </p>
-          <span className="kingdom-stars" aria-label={`Stufe ${b.level} von ${MAX_LEVEL}`}>
-            {Array.from({ length: MAX_LEVEL }, (_, i) => (
-              <Star key={i} size={16} strokeWidth={2.4} className={i < b.level ? "on" : ""} aria-hidden />
-            ))}
-            <span className="text-xs font-bold">
-              Stufe {b.level}/{MAX_LEVEL}
-            </span>
-          </span>
+          <Stars level={b.level} />
         </div>
         <button type="button" className="icon-btn" aria-label="Schließen" onClick={onClose}>
           <X size={18} strokeWidth={2.6} />
         </button>
       </div>
       <p className="text-xs font-bold">{statLine(b.kind, b.level, castle.boosters)}</p>
-      {!max && (
+      {p && (
+        <div className="flex items-center gap-2">
+          <div className="bar xp min-w-0 flex-1" aria-label="Lager">
+            <span style={{ width: `${(stored / Math.max(1, capacity(b))) * 100}%` }} />
+          </div>
+          <button type="button" className="btn btn-ink btn-sm" disabled={stored <= 0} onClick={onHarvest}>
+            Ernten {stored > 0 ? `+${fmt(stored)}` : ""}
+          </button>
+        </div>
+      )}
+      {cost && (
         <p className="text-xs font-bold text-pink">
           Stufe {b.level + 1} „{LEVEL_TITLE[b.kind][b.level]}“: {statLine(b.kind, b.level + 1, castle.boosters)}
         </p>
       )}
+      {cost && <CostRow cost={cost} wallet={wallet} />}
       <button type="button" className="btn btn-go kingdom-upgrade" disabled={!!block} onClick={onUpgrade}>
-        {max ? (
-          "Maximale Stufe"
-        ) : (
+        {cost ? (
           <>
-            <ArrowUp size={18} strokeWidth={2.8} aria-hidden /> Upgrade · {cost} Gold
+            <ArrowUp size={18} strokeWidth={2.8} aria-hidden /> Upgrade auf Stufe {b.level + 1}
           </>
+        ) : (
+          "Maximale Stufe"
         )}
       </button>
-      {block && !max && <p className="text-xs font-bold text-muted">{block}</p>}
-      {walls && walls.count > 1 && !max && b.level < castleLevel(castle) && (
-        <button type="button" className="btn btn-ink btn-sm" disabled={coins < walls.cost} onClick={onUpgradeWalls}>
-          Alle {walls.count} Mauern Stufe {b.level} upgraden · je {walls.cost} G
+      {block && cost && <p className="text-xs font-bold text-muted">{block}</p>}
+      <p className="text-xs font-medium text-muted">Gebäude festhalten und ziehen, um es zu verschieben.</p>
+    </div>
+  );
+}
+
+function WallPanel({
+  castle,
+  coins,
+  onUpgrade,
+  onClose,
+}: {
+  castle: Castle;
+  coins: number;
+  onUpgrade: () => void;
+  onClose: () => void;
+}) {
+  const l = castle.wall;
+  const block = wallUpgradeBlock(castle, coins);
+  const now = statsFor("wall", l);
+  const next = l < MAX_LEVEL ? statsFor("wall", l + 1) : null;
+  return (
+    <div className="kingdom-panel">
+      <div className="flex items-start gap-3">
+        <span className="kingdom-badge" aria-hidden>
+          <Shield size={26} strokeWidth={2.4} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-display text-xl leading-none">Stadtmauer · {LEVEL_TITLE.wall[l - 1]}</p>
+          <Stars level={l} />
+        </div>
+        <button type="button" className="icon-btn" aria-label="Schließen" onClick={onClose}>
+          <X size={18} strokeWidth={2.6} />
         </button>
-      )}
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-medium text-muted">Gebäude festhalten und ziehen, um es zu verschieben.</p>
-        {b.kind === "wall" && (
-          <button type="button" className="btn btn-ghost btn-sm" onClick={onRemove} aria-label="Mauer abreißen">
-            <Trash2 size={16} strokeWidth={2.6} aria-hidden />
-          </button>
-        )}
       </div>
+      <p className="text-xs font-bold">
+        Fest um das ganze Königreich · {now.hp} Leben je Abschnitt · Mauertürme {now.dmg} Schaden
+      </p>
+      {next && (
+        <p className="text-xs font-bold text-pink">
+          Stufe {l + 1} „{LEVEL_TITLE.wall[l]}“: {next.hp} Leben · {next.dmg} Schaden
+        </p>
+      )}
+      {next && <CostRow cost={costFor("wall", l + 1)} wallet={walletOf(castle, coins)} />}
+      <button type="button" className="btn btn-go kingdom-upgrade" disabled={!!block} onClick={onUpgrade}>
+        {next ? (
+          <>
+            <ArrowUp size={18} strokeWidth={2.8} aria-hidden /> Mauer auf Stufe {l + 1}
+          </>
+        ) : (
+          "Maximale Stufe"
+        )}
+      </button>
+      {block && next && <p className="text-xs font-bold text-muted">{block}</p>}
     </div>
   );
 }

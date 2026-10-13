@@ -375,6 +375,7 @@
 
 .kingdom-top {
   position: absolute;
+  z-index: 2;
   top: max(0.6rem, var(--safe-top));
   left: 0.7rem;
   right: 0.7rem;
@@ -388,7 +389,157 @@
   pointer-events: auto;
 }
 
-.kingdom-gold,
+.kingdom-ui {
+  z-index: 1;
+}
+
+.kingdom-canvas:not(.kingdom-ui) {
+  pointer-events: none;
+}
+
+.kingdom-res {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.res {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 2px solid rgba(26, 18, 12, 0.85);
+  border-radius: 999px;
+  background: rgba(26, 18, 12, 0.72);
+  color: #fff6ea;
+  padding: 0.15rem 0.55rem 0.15rem 0.4rem;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.res-gold svg {
+  color: #ffd000;
+}
+.res-food svg {
+  color: #f2c84b;
+}
+.res-stone svg {
+  color: #c9d0d8;
+}
+.res-coal svg {
+  color: #ff8a4a;
+}
+
+.kingdom-side {
+  position: absolute;
+  top: calc(max(0.6rem, var(--safe-top)) + 3.2rem);
+  right: 0.7rem;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.4rem;
+}
+
+.kingdom-build {
+  position: absolute;
+  right: 0.8rem;
+  bottom: max(0.9rem, var(--safe-bottom));
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 4.6rem;
+  height: 4.6rem;
+  border: 3px solid var(--color-ink);
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 30%, #ffe680, #e7b52c 70%);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-hard);
+}
+
+.kingdom-sheet {
+  position: absolute;
+  left: 0.6rem;
+  right: 0.6rem;
+  bottom: max(0.6rem, var(--safe-bottom));
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 72%;
+  max-width: 30rem;
+  margin-inline: auto;
+  border: 3px solid var(--color-ink);
+  border-radius: var(--radius-card);
+  background: var(--color-cream);
+  padding: 0.75rem;
+  box-shadow: var(--shadow-hard);
+}
+
+.kingdom-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  overflow: auto;
+  min-height: 0;
+}
+
+.kingdom-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  width: 100%;
+  border: 2px solid rgba(26, 18, 12, 0.25);
+  border-radius: 0.8rem;
+  background: #fffaf0;
+  padding: 0.5rem;
+  color: var(--color-ink);
+}
+
+.kingdom-item[aria-disabled="true"] {
+  opacity: 0.6;
+}
+
+.cost-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.25rem;
+}
+
+.cost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  border-radius: 999px;
+  background: rgba(26, 18, 12, 0.08);
+  padding: 0.05rem 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.cost.lack {
+  background: rgba(208, 0, 43, 0.12);
+  color: #b0001f;
+}
+
+.kingdom-loading {
+  display: grid;
+  place-items: center;
+  color: #fff6ea;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+}
+
+.kingdom-fallback {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.8rem;
+  padding: 1.5rem;
+  background: var(--color-cream);
+}
+
 .kingdom-raid-label {
   display: inline-flex;
   align-items: center;
@@ -406,11 +557,6 @@
   color: #c8960c;
 }
 
-.kingdom-attack,
-.kingdom-raid-label {
-  margin-left: auto;
-}
-
 .kingdom-attack {
   display: inline-flex;
   align-items: center;
@@ -423,6 +569,9 @@
 
 .kingdom-raid {
   position: absolute;
+  z-index: 2;
+  max-width: 30rem;
+  margin-inline: auto;
   top: calc(max(0.6rem, var(--safe-top)) + 3.4rem);
   left: 0.7rem;
   right: 0.7rem;
@@ -444,6 +593,9 @@
 .kingdom-panel,
 .kingdom-result {
   position: absolute;
+  z-index: 2;
+  max-width: 30rem;
+  margin-inline: auto;
   left: 0.7rem;
   right: 0.7rem;
   bottom: max(0.7rem, var(--safe-bottom));
@@ -506,37 +658,9 @@
   font-size: 1.25rem;
 }
 
-.kingdom-tools {
-  position: absolute;
-  left: 0.5rem;
-  right: 0.5rem;
-  bottom: max(0.6rem, var(--safe-bottom));
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.4rem;
-}
-
-.kingdom-tool {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-  min-width: 0;
-  border: 3px solid var(--color-ink);
-  border-radius: 0.95rem;
-  background: var(--color-cream);
-  padding: 0.5rem 0.2rem;
-  box-shadow: var(--shadow-hard);
-  color: var(--color-ink);
-}
-
-.kingdom-tool:active {
-  transform: translate(2px, 2px);
-  box-shadow: 2px 2px 0 var(--color-ink);
-}
-
 .kingdom-toast {
   position: absolute;
+  z-index: 2;
   left: 0;
   right: 0;
   top: calc(max(0.6rem, var(--safe-top)) + 3.6rem);
