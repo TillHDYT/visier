@@ -68,7 +68,7 @@ scripts/                   Spieltest und Einzelseiten-Build
 
 - 3D-Ansicht (Three.js) mit Licht, Schatten und Texturen; wird erst beim Öffnen geladen.
 - Feste Stadtmauer um einen 36 × 36 Felder großen Innenhof. Sie lässt sich nicht verschieben, nur upgraden (Palisade bis Königsmauer).
-- Die Mauer wächst mit dem Schloss mit: ab Schloss-Stufe 5 Gift-Mauer, ab 10 Eis-Mauer, ab 15 Feuer-Mauer (auch bei der Mordor-Festung). Ihre Flächen stammen aus den gemalten Mauer-Bildern (`src/assets/rampart-*`); Leuchtrisse, Bodennebel und Partikel werden mit jeder Schloss-Stufe stärker.
+- Die Mauer wächst mit dem Schloss mit: ab Schloss-Stufe 5 Gift-Mauer, ab 10 Eis-Mauer, ab 15 Feuer-Mauer, ab 20 die deutlich größere Mordor-Mauer. Ihre Flächen stammen aus den gemalten Mauer-Bildern in `art/walls/src` (Texturen erzeugt mit `python3 art/walls/build-atlas.py`); Leuchtrisse, Bodennebel und Partikel werden mit jeder Schloss-Stufe stärker.
 - Gebäude: Schloss, Wachturm, Wohnhaus, Feld, Bauernhof, Steinbruch, Kohlewerk, Goldmine. Alle bis Stufe 20: alle vier Stufen eine neue Bauform, dazwischen wachsen die Gebäude und bekommen Steinkante, Laternen und Banner. Die Schloss-Stufe begrenzt die anderen.
 - Schloss: Königsburg (Stufe 1), Gift-Schloss (ab 5), Eis-Schloss (ab 10), Feuer-Schloss (ab 15), Mordor-Festung (20). Dazwischen färbt sich das Schloss mit jeder Stufe mehr in den kommenden Stil; Aura, Leuchten, Fackeln und Partikel werden stärker.
 - Wie in Clash of Clans: Das Schloss steigt erst auf Stufe N, wenn die Stadtmauer und drei Viertel der Gebäude mindestens Stufe N − 1 haben.

@@ -1,6 +1,6 @@
 /**
  * Stadtmauer im Stil des Schlosses: ab Schloss-Stufe 5 Gift, ab 10 Eis, ab 15
- * Feuer (auch bei der Mordor-Festung). Die Mauer bleibt ein festes 3D-Modell
+ * Feuer, ab 20 die große Mordor-Mauer. Die Mauer bleibt ein festes 3D-Modell
  * (antippbar, Ziel der Angriffe); ihre Flächen stammen aus den gemalten
  * Mauer-Bildern. Leuchtrisse, Bodennebel und Partikel werden mit jeder
  * Schloss-Stufe innerhalb eines Stils stärker.
@@ -10,6 +10,9 @@ import fireAtlas from "@/assets/rampart-fire-atlas.webp";
 import fireGlow from "@/assets/rampart-fire-glow.webp";
 import firePreview from "@/assets/rampart-fire.webp";
 import iceAtlas from "@/assets/rampart-ice-atlas.webp";
+import mordorAtlas from "@/assets/rampart-mordor-atlas.webp";
+import mordorGlow from "@/assets/rampart-mordor-glow.webp";
+import mordorPreview from "@/assets/rampart-mordor.webp";
 import iceGlow from "@/assets/rampart-ice-glow.webp";
 import icePreview from "@/assets/rampart-ice.webp";
 import poisonAtlas from "@/assets/rampart-poison-atlas.webp";
@@ -21,20 +24,22 @@ import { Kit, type KitMat } from "./meshes";
 import { INNER0, INNER1, WORLD, castleStage } from "./model";
 import { wallTowers } from "./raid";
 import type { Materials } from "./textures";
+import { WALL_LAYOUT } from "./wall-layout";
 
-export type WallStyle = "poison" | "ice" | "fire";
+export type WallStyle = "poison" | "ice" | "fire" | "mordor";
 
 export const WALL_STYLES: { key: WallStyle; name: string; from: number; preview: string }[] = [
   { key: "poison", name: "Gift-Mauer", from: 5, preview: poisonPreview },
   { key: "ice", name: "Eis-Mauer", from: 10, preview: icePreview },
   { key: "fire", name: "Feuer-Mauer", from: 15, preview: firePreview },
+  { key: "mordor", name: "Mordor-Mauer", from: 20, preview: mordorPreview },
 ];
 
 /** Mauer-Stil zur Schloss-Stufe und wie stark seine Effekte sind (0–1). */
 export function wallStyleOf(castleLevel: number): { style: WallStyle | null; strength: number } {
   const { stage, progress } = castleStage(castleLevel);
   if (stage.key === "normal") return { style: null, strength: 0 };
-  if (stage.key === "mordor") return { style: "fire", strength: 1 };
+  if (stage.key === "mordor") return { style: "mordor", strength: 1 };
   return { style: stage.key, strength: progress };
 }
 
@@ -45,26 +50,36 @@ const FILES: Record<WallStyle, { atlas: string; glow: string }> = {
   poison: { atlas: poisonAtlas, glow: poisonGlow },
   ice: { atlas: iceAtlas, glow: iceGlow },
   fire: { atlas: fireAtlas, glow: fireGlow },
+  mordor: { atlas: mordorAtlas, glow: mordorGlow },
 };
 
 /** Ausschnitt im Atlas: u, v (von unten), Breite, Höhe; negative Breite spiegelt. */
 type Rect = readonly [number, number, number, number];
 
-/** Lage der Flächen im Atlas (siehe Erzeugungs-Skript, gleich für alle Stile). */
-const FACE_Z: Rect = [0.00586, 0.78906, 0.53711, 0.20508];
-const FACE_X: Rect = [0.55469, 0.76465, 0.3125, 0.22949];
-const TOWER_Z: Rect = [0.87891, 0.56445, 0.14648, 0.42969];
-const TOWER_X: Rect = [0.55469, 0.3623, 0.13184, 0.39062];
-const MIST: Rect = [0.00586, 0.5625, 0.53711, 0.21484];
-/** Schlichtes Mauerwerk für Zinnen und Wehrgang. */
-const STONE: Rect = [FACE_Z[0] + 0.4 * FACE_Z[2], FACE_Z[1] + 0.55 * FACE_Z[3], 0.12 * FACE_Z[2], 0.35 * FACE_Z[3]];
-/** Unterer Mauerstreifen (mit Nebel) für Turmsockel. */
-const BASE: Rect = [FACE_Z[0], FACE_Z[1], 0.25, 0.25 * FACE_Z[3]];
-/** Mauerwerk im passenden Seitenverhältnis (Breite/Höhe), damit nichts verzerrt. */
-function stoneFor(ratio: number): Rect {
-  const h = ratio >= 1 ? 0.3 * FACE_Z[3] : 0.9 * FACE_Z[3];
-  return [FACE_Z[0] + 0.02, FACE_Z[1] + 0.05 * FACE_Z[3], Math.min(FACE_Z[2] - 0.04, ratio * h), h];
+/**
+ * Flächen eines Stils im Atlas (aus art/walls/build-atlas.py) und daraus
+ * abgeleitete Ausschnitte für Zinnen, Wehrgang und Turmsockel.
+ */
+function layout(style: WallStyle) {
+  const L = WALL_LAYOUT[style];
+  const brick: Rect = L.brick;
+  /** Mauerwerk im Seitenverhältnis `ratio` (Breite/Höhe), damit nichts verzerrt. */
+  const stone = (ratio: number): Rect => {
+    const a = aspect(brick);
+    return ratio >= a
+      ? [brick[0], brick[1], brick[2], brick[2] / ratio]
+      : [brick[0], brick[1], brick[3] * ratio, brick[3]];
+  };
+  return {
+    faceZ: L.faceZ as Rect,
+    faceX: L.faceX as Rect,
+    towerZ: L.towerZ as Rect,
+    towerX: L.towerX as Rect,
+    mist: L.mist as Rect,
+    stone,
+  };
 }
+
 /** Seitenverhältnis (Breite/Höhe) einer Fläche im Bild. */
 const aspect = (r: Rect) => Math.abs(r[2]) / r[3];
 const mirror = (r: Rect): Rect => [r[0] + r[2], r[1], -r[2], r[3]];
@@ -118,8 +133,9 @@ function art(style: WallStyle): Art {
     t.anisotropy = 4;
     return t;
   };
-  const map = prep(loader.load(FILES[style].atlas, done));
-  const glow = prep(loader.load(FILES[style].glow, done));
+  // Auch bei einem Ladefehler weiter: Die Mauer steht dann eben ohne Bild statt gar nicht.
+  const map = prep(loader.load(FILES[style].atlas, done, undefined, done));
+  const glow = prep(loader.load(FILES[style].glow, done, undefined, done));
   made.body.map = map;
   made.body.emissiveMap = glow;
   made.mist.map = map;
@@ -156,7 +172,7 @@ export function preloadWallArt() {
 type Faces = Partial<Record<"px" | "nx" | "py" | "ny" | "pz" | "nz", Rect>>;
 
 /** Quader, dessen Seiten je einen Ausschnitt des Atlas zeigen. */
-function atlasBox(w: number, h: number, d: number, faces: Faces, rest: Rect = STONE) {
+function atlasBox(w: number, h: number, d: number, faces: Faces, rest: Rect) {
   const g = new THREE.BoxGeometry(w, h, d);
   const uv = g.attributes.uv as THREE.BufferAttribute;
   (["px", "nx", "py", "ny", "pz", "nz"] as const).forEach((f, i) => {
@@ -175,6 +191,7 @@ const STYLE_FX: Record<WallStyle, { motion: Motion; colors: string[] }> = {
   poison: { motion: "rise", colors: ["#7dff4a", "#b45cff", "#c8ff6a"] },
   ice: { motion: "snow", colors: ["#e6f8ff", "#9fe2ff", "#ffffff"] },
   fire: { motion: "ember", colors: ["#ff7a1a", "#ffd04a", "#ff4a10"] },
+  mordor: { motion: "ember", colors: ["#ff3010", "#ff7a1a", "#ffb040"] },
 };
 
 // ---------------------------------------------------------------------------
@@ -200,12 +217,16 @@ export class WallLook {
 
     const k = new Kit(mats);
     const body = a.body;
+    const L = layout(style);
+    // Die Mordor-Mauer ist deutlich größer: höher, dicker, mächtigere Türme.
+    const big = style === "mordor" ? 1.45 : 1;
+    const cube = L.stone(1);
     const lo = INNER0 - 0.5;
     const hi = INNER1 + 0.5;
     const mid = WORLD / 2;
     const gateHalf = 1.4;
-    const h = 2.5 + 0.065 * wallLevel;
-    const t = 1.1;
+    const h = (2.5 + 0.065 * wallLevel) * big;
+    const t = style === "mordor" ? 1.3 : 1.1;
 
     // Seiten als [x1, z1, x2, z2]; die Südseite hat das Tor.
     const runs: [number, number, number, number][] = [
@@ -215,38 +236,41 @@ export class WallLook {
       [lo, hi, mid - gateHalf, hi],
       [mid + gateHalf, hi, hi, hi],
     ];
-    const merlon = atlasBox(0.34, 0.36, 0.34, {});
+    const mz = 0.34 * big;
+    const merlon = atlasBox(mz, mz * 1.06, mz, {}, cube);
     for (const [x1, z1, x2, z2] of runs) {
       const along = x1 === x2; // läuft entlang z
       const len = Math.abs(along ? z2 - z1 : x2 - x1);
-      const face = along ? FACE_X : FACE_Z;
+      const face = along ? L.faceX : L.faceZ;
       const n = Math.max(1, Math.round(len / (h * aspect(face))));
       const seg = len / n;
       for (let i = 0; i < n; i++) {
         const r = i % 2 ? mirror(face) : face;
         const c = Math.min(along ? z1 : x1, along ? z2 : x2) + seg * (i + 0.5);
         const geo = along
-          ? atlasBox(t, h, seg, { px: r, nx: r, py: stoneFor(t / seg) })
-          : atlasBox(seg, h, t, { pz: r, nz: r, py: stoneFor(seg / t) });
+          ? atlasBox(t, h, seg, { px: r, nx: r, py: L.stone(t / seg) }, cube)
+          : atlasBox(seg, h, t, { pz: r, nz: r, py: L.stone(seg / t) }, cube);
         put(k, body, geo, h, along ? x1 : c, 0, along ? c : z1);
       }
       // Zinnen außen und innen
-      const m = Math.round(len / 0.62);
-      const off = t / 2 - 0.17;
+      const m = Math.round(len / (0.62 * big));
+      const off = t / 2 - mz / 2;
       for (let i = 0; i <= m; i++) {
         const u = Math.min(along ? z1 : x1, along ? z2 : x2) + (len * i) / m;
         for (const s of [-1, 1]) {
-          if (along) put(k, body, merlon, 0.36, x1 + s * off, h, u);
-          else put(k, body, merlon, 0.36, u, h, z1 + s * off);
+          if (along) put(k, body, merlon, mz * 1.06, x1 + s * off, h, u);
+          else put(k, body, merlon, mz * 1.06, u, h, z1 + s * off);
         }
       }
     }
 
     // Türme wie im Bild: eckig, gestufter Sockel, Zinnenkranz
     const tower = (x: number, z: number, s: number, th: number) => {
-      put(k, body, atlasBox(s + 0.35, 0.5, s + 0.35, { px: BASE, nx: BASE, pz: BASE, nz: BASE }), 0.5, x, 0, z);
-      put(k, body, atlasBox(s, th, s, { pz: TOWER_Z, nz: TOWER_Z, px: TOWER_X, nx: TOWER_X }), th, x, 0, z);
-      put(k, body, atlasBox(s + 0.16, 0.18, s + 0.16, {}), 0.18, x, th, z);
+      const base = L.stone((s + 0.35) / 0.5);
+      put(k, body, atlasBox(s + 0.35, 0.5, s + 0.35, { px: base, nx: base, pz: base, nz: base }, cube), 0.5, x, 0, z);
+      const faces = { pz: L.towerZ, nz: L.towerZ, px: L.towerX, nx: L.towerX };
+      put(k, body, atlasBox(s, th, s, faces, cube), th, x, 0, z);
+      put(k, body, atlasBox(s + 0.16, 0.18, s + 0.16, {}, cube), 0.18, x, th, z);
       const step = (s - 0.4) / 3;
       const seen = new Set<string>();
       for (let i = 0; i < 4; i++) {
@@ -260,18 +284,21 @@ export class WallLook {
           const key = `${dx.toFixed(2)},${dz.toFixed(2)}`;
           if (seen.has(key)) continue;
           seen.add(key);
-          put(k, body, atlasBox(0.4, 0.42, 0.4, {}), 0.42, x + dx, th + 0.18, z + dz);
+          put(k, body, atlasBox(0.4, 0.42, 0.4, {}, cube), 0.42, x + dx, th + 0.18, z + dz);
         }
       }
     };
-    const th = h + 1.5 + 0.02 * wallLevel;
-    const towers = wallTowers();
-    for (const tw of towers) tower(tw.x, tw.y, 2.1, th);
+    const th = (h + 1.5 + 0.02 * wallLevel) * (style === "mordor" ? 1.12 : 1);
+    const ts = 2.1 * (style === "mordor" ? 1.2 : 1);
+    // Der Mauerturm in der Tormitte würde das Tor verdecken; dort steht das Torhaus.
+    const towers = wallTowers().filter((tw) => !(tw.y === hi && Math.abs(tw.x - mid) < gateHalf + ts));
+    for (const tw of towers) tower(tw.x, tw.y, ts, th);
 
     // Torhaus
     const gh = h + 1.1;
     for (const s of [-1, 1]) tower(mid + s * (gateHalf + 0.75), hi, 1.5, gh);
-    put(k, body, atlasBox(gateHalf * 2 + 0.3, 0.8, t + 0.2, { pz: FACE_Z, nz: FACE_Z }), 0.8, mid, gh - 0.8, hi);
+    const lintel = L.stone((gateHalf * 2 + 0.3) / 0.8);
+    put(k, body, atlasBox(gateHalf * 2 + 0.3, 0.8, t + 0.2, { pz: lintel, nz: lintel }, cube), 0.8, mid, gh - 0.8, hi);
     k.box("woodDark", gateHalf * 2 - 0.2, gh - 0.8, 0.12, mid, 0, hi + 0.2);
     for (let i = 0; i < 5; i++) k.box("metal", 0.06, gh - 0.8, 0.14, mid - gateHalf + 0.4 + i * 0.55, 0, hi + 0.21);
 
@@ -302,6 +329,17 @@ export class WallLook {
       } else if (style === "fire") {
         // Glutbett auf jedem Turm; die Flammen darüber sind gemalt (siehe unten)
         k.box("fire", 1.2, 0.08, 1.2, tw.x, th + 0.18, tw.y);
+      } else if (style === "mordor") {
+        // Schwarze Turmspitzen wie im Bild: eine hohe Mitte, vier Eckdornen
+        k.box("fire", ts - 0.3, 0.08, ts - 0.3, tw.x, th + 0.18, tw.y);
+        k.cone("dark", 0.55, 3.6, 8, tw.x, th + 0.6, tw.y);
+        for (const [dx, dz] of [
+          [-1, -1],
+          [1, -1],
+          [-1, 1],
+          [1, 1],
+        ])
+          k.cone("dark", 0.2, 1.7, 6, tw.x + dx * (ts / 2 - 0.25), th + 0.6, tw.y + dz * (ts / 2 - 0.25));
       }
     }
 
@@ -314,7 +352,7 @@ export class WallLook {
     this.group.add(built);
 
     // Bodennebel innen und außen entlang der Mauer
-    const mist = this.mistStrips(runs, t);
+    const mist = this.mistStrips(runs, t, L.mist);
     const mistMesh = new THREE.Mesh(mist, a.mist);
     mistMesh.renderOrder = 0;
     this.group.add(noPick(mistMesh));
@@ -339,10 +377,10 @@ export class WallLook {
       }
       return [lo, lo] as const;
     };
-    if (style === "fire") {
+    if (style === "fire" || style === "mordor") {
       // Gemalte Flammen auf den Türmen: ein Zeichenaufruf für alle
       // Punktgröße ist in three.js ohne tan(fov/2) gerechnet: ×2,8 ergibt etwa Weltgröße
-      const world = 2.2 + 1.2 * strength;
+      const world = (2.2 + 1.2 * strength) * (style === "mordor" ? 1.15 : 1);
       const size = world * 2.8;
       const pos = new Float32Array(towers.length * 3);
       towers.forEach((tw, i) => pos.set([tw.x, th + 0.25 + world * 0.42, tw.y], i * 3));
@@ -364,7 +402,7 @@ export class WallLook {
   }
 
   /** Nebelstreifen auf dem Boden beidseits jeder Mauerseite (im Wechsel gespiegelt). */
-  private mistStrips(runs: [number, number, number, number][], t: number) {
+  private mistStrips(runs: [number, number, number, number][], t: number, MIST: Rect) {
     const depth = 2.6;
     const pos: number[] = [];
     const uv: number[] = [];

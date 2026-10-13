@@ -208,7 +208,11 @@ export function CastleScreen({ meta, onMeta, onClose }: Props) {
   function doUpgrade(b: Building) {
     const r = upgrade(castle, b.id, coins);
     if (!r) return;
-    commit(r.castle, r.coins);
+    if (meta.test) {
+      // Testmodus: Upgrade ist gratis, die Ernte des Gebäudes kommt ins echte Lager.
+      const h = collect(meta.castle, meta.coins, Date.now(), [b.id]);
+      onMeta({ ...meta, castle: { ...r.castle, res: h.castle.res }, coins: h.coins });
+    } else commit(r.castle, r.coins);
     scene()?.celebrate(b.id, b.level + 1);
   }
 
@@ -611,8 +615,12 @@ function WallPanel({
       </p>
       <ul className="wall-styles" aria-label="Mauer-Stile">
         {WALL_STYLES.map((s) => (
-          <li key={s.key} className={s.key === style?.key ? "on" : keep >= s.from ? "" : "locked"}>
-            <img src={s.preview} alt="" />
+          <li
+            key={s.key}
+            className={s.key === style?.key ? "on" : keep >= s.from ? "" : "locked"}
+            aria-current={s.key === style?.key ? "true" : undefined}
+          >
+            <img src={s.preview} alt={keep >= s.from ? "" : "gesperrt"} />
             <span>{s.name}</span>
             <span className="text-muted">ab Schloss {s.from}</span>
           </li>

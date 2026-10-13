@@ -29,7 +29,9 @@ const keep = tags
 // Der Viewer hält den Inhalt per Innenabstand auf :root frei. Das Spiel füllt
 // deshalb genau diesen Innenbereich (statt des ganzen Fensters), und die
 // eigenen Safe-Area-Abstände entfallen, sonst würde doppelt eingerückt.
-const page = `${keep}
+// Zeichensatz ausdrücklich setzen (sonst z. B. „∞“ falsch, wenn kein Viewer ihn vorgibt).
+const page = `<meta charset="utf-8" />
+${keep}
 <style>
 ${style}
 :root { --safe-top: 0px; --safe-bottom: 0px; box-sizing: border-box; height: 100%; background: #1a120c; }

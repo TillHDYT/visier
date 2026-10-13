@@ -153,8 +153,8 @@ function Options({ meta, onMeta, onBack }: { meta: Meta; onMeta: (m: Meta) => vo
         onToggle={() => onMeta({ ...meta, test: !meta.test })}
       />
       <p className="text-sm font-medium text-muted">
-        Musik und Effekte laufen getrennt. Im Testmodus kostet nichts etwas; dein echtes Gold und deine Rohstoffe
-        bleiben dabei unverändert und sind nach dem Ausschalten wieder da.
+        Musik und Effekte laufen getrennt. Im Testmodus kostet nichts; dein echtes Gold und deine Rohstoffe bleiben
+        dabei unverändert und sind nach dem Ausschalten wieder da.
       </p>
       <button type="button" className="btn btn-go mt-auto" onClick={onBack}>
         Zurück
@@ -221,6 +221,10 @@ function Skins({ meta, apply, onBack }: ShopProps) {
   return (
     <>
       <Header title="Skins" coins={meta.coins} />
+      <p className="text-sm font-medium text-muted">
+        Mauer-Skins gelten bis Schloss-Stufe 4. Danach trägt die Mauer den Stil des Schlosses (Gift, Eis, Feuer,
+        Mordor).
+      </p>
       <div className="grid grid-cols-2 gap-2">
         {SKIN_INFO.map((skin) => {
           const owned = meta.castle.owned.includes(skin.id);

@@ -285,3 +285,16 @@ describe("Königreich: Angriff", () => {
     expect(JSON.stringify(c)).toBe(before);
   });
 });
+
+describe("Königreich: Mauer-Stil folgt dem Schloss", () => {
+  it("normal bis 4, Gift ab 5, Eis ab 10, Feuer ab 15, Mordor ab 20", async () => {
+    const { wallStyleOf } = await import("@/game/castle/wall-look");
+    const at = (l: number) => wallStyleOf(l).style;
+    expect([1, 4].map(at)).toEqual([null, null]);
+    expect([5, 9].map(at)).toEqual(["poison", "poison"]);
+    expect([10, 14].map(at)).toEqual(["ice", "ice"]);
+    expect([15, 19].map(at)).toEqual(["fire", "fire"]);
+    expect(at(20)).toBe("mordor");
+    expect(wallStyleOf(9).strength).toBeGreaterThan(wallStyleOf(5).strength);
+  });
+});
