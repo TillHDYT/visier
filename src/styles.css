@@ -460,15 +460,13 @@
 .kingdom-sheet {
   position: absolute;
   left: 0.6rem;
-  right: 0.6rem;
   bottom: max(0.6rem, var(--safe-bottom));
   z-index: 3;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  max-height: 72%;
-  max-width: 30rem;
-  margin-inline: auto;
+  max-height: calc(100% - 4.2rem);
+  width: min(26rem, calc(55% - 1rem));
   border: 3px solid var(--color-ink);
   border-radius: var(--radius-card);
   background: var(--color-cream);
@@ -570,7 +568,7 @@
 .kingdom-raid {
   position: absolute;
   z-index: 2;
-  max-width: 30rem;
+  max-width: 24rem;
   margin-inline: auto;
   top: calc(max(0.6rem, var(--safe-top)) + 3.4rem);
   left: 0.7rem;
@@ -590,14 +588,15 @@
   width: auto;
 }
 
+/* Querformat: Fenster links unten angedockt, die Karte bleibt rechts frei */
 .kingdom-panel,
 .kingdom-result {
   position: absolute;
   z-index: 2;
-  max-width: 30rem;
-  margin-inline: auto;
+  width: min(24rem, calc(50% - 1rem));
+  max-height: calc(100% - 4.4rem);
+  overflow-y: auto;
   left: 0.7rem;
-  right: 0.7rem;
   bottom: max(0.7rem, var(--safe-bottom));
   display: flex;
   flex-direction: column;
@@ -610,8 +609,11 @@
 }
 
 .kingdom-result {
+  left: 0;
+  right: 0;
+  margin-inline: auto;
   bottom: auto;
-  top: 30%;
+  top: 18%;
   text-align: center;
   align-items: stretch;
 }
@@ -1078,4 +1080,55 @@
   display: grid;
   place-items: center;
   box-shadow: var(--shadow-hard);
+}
+
+/* Hinweis beim Hochkant-Halten: die Burg ist im Querformat */
+.turn-hint {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.6rem;
+  pointer-events: none;
+  color: #fff6ea;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  text-shadow: 0 2px 0 #1a120c;
+  background: rgb(26 18 12 / 0.55);
+  animation: turn-hint 3.2s ease forwards;
+}
+
+.turn-hint-phone {
+  filter: drop-shadow(0 2px 0 #1a120c);
+  animation: turn-phone 1.6s ease-in-out infinite;
+}
+
+@keyframes turn-hint {
+  0%,
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+@keyframes turn-phone {
+  0%,
+  20% {
+    transform: rotate(0deg);
+  }
+  60%,
+  100% {
+    transform: rotate(-90deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .turn-hint-phone {
+    animation: none;
+  }
 }

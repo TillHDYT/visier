@@ -86,6 +86,8 @@ export class CastleScene {
   private wallKey = "";
   private wallLook: WallLook | null = null;
   private wallWaiting = false;
+  /** Ansicht um 90° gedreht (Handy hochkant, Burg im Querformat)? */
+  private turned = false;
   private ghost: { kind: BuildingKind; x: number; y: number; group: THREE.Group } | null = null;
   private ghostPad: THREE.Mesh;
   private selPad: THREE.Mesh;
@@ -238,6 +240,13 @@ export class CastleScene {
     this.sfx.muted = !sound;
     if (typeof this.selected === "number" && !castle.buildings.some((b) => b.id === this.selected)) this.select(null);
     this.sync();
+  }
+
+  /** Die Oberfläche ist per CSS um 90° gedreht; Fingerpositionen werden umgerechnet. */
+  setTurned(on: boolean) {
+    this.turned = on;
+    this.pointers.clear();
+    this.gesture = null;
   }
 
   unlockAudio() {
@@ -400,6 +409,7 @@ export class CastleScene {
         this.removeWall();
         if (ws.style) {
           this.wallLook = new WallLook(this.mats, ws.style, this.castle.wall, ws.strength);
+          this.wallLook.fit(this.camera.fov);
           this.wall = this.wallLook.group;
         } else {
           this.mats.setSkin(this.castle.skin);
@@ -527,9 +537,9 @@ export class CastleScene {
   // Kamera und Projektion
 
   private resize() {
-    const rect = this.canvas.getBoundingClientRect();
-    this.viewW = Math.max(1, rect.width);
-    this.viewH = Math.max(1, rect.height);
+    // Layout-Größe statt Bildschirm-Rechteck: Bei gedrehter Ansicht wären Breite und Höhe vertauscht.
+    this.viewW = Math.max(1, this.canvas.clientWidth);
+    this.viewH = Math.max(1, this.canvas.clientHeight);
     this.renderer.setSize(this.viewW, this.viewH, false);
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     this.overlayCanvas.width = Math.round(this.viewW * dpr);
@@ -539,6 +549,7 @@ export class CastleScene {
     // Hochformat: weiter weg, damit die Breite passt
     this.camera.fov = this.viewW < this.viewH ? 40 : 30;
     this.camera.updateProjectionMatrix();
+    this.wallLook?.fit(this.camera.fov);
     this.dirty = true;
   }
 
@@ -620,7 +631,11 @@ export class CastleScene {
 
   private local(e: PointerEvent | WheelEvent): [number, number] {
     const r = this.overlayCanvas.getBoundingClientRect();
-    return [e.clientX - r.left, e.clientY - r.top];
+    if (!this.turned) return [e.clientX - r.left, e.clientY - r.top];
+    // Drehung um 90° im Uhrzeigersinn um die Mitte zurückrechnen
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    return [this.viewW / 2 + (e.clientY - cy), this.viewH / 2 - (e.clientX - cx)];
   }
 
   private onDown = (e: PointerEvent) => {

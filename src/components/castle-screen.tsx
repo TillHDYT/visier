@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   ArrowLeft,
   ArrowUp,
@@ -16,6 +16,7 @@ import {
   Shield,
   Sprout,
   Star,
+  Smartphone,
   Swords,
   TowerControl,
   Tractor,
@@ -101,6 +102,13 @@ export function CastleScreen({ meta, onMeta, onClose }: Props) {
   const glRef = useRef<HTMLCanvasElement>(null);
   const uiRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<CastleScene | null>(null);
+  const rootRef = useRef<HTMLElement>(null);
+  // Die Burg läuft immer im Querformat. Hält man das Handy hochkant, wird sie
+  // um 90° gedreht gezeigt: Man legt das Handy quer (auch mit Rotationssperre).
+  const [box, setBox] = useState<{ w: number; h: number } | null>(null);
+  const turned = !!box && box.h > box.w;
+  const turnedRef = useRef(turned);
+  turnedRef.current = turned;
   const metaRef = useRef(meta);
   metaRef.current = meta;
   const kitRef = useRef(false);
@@ -157,6 +165,7 @@ export function CastleScreen({ meta, onMeta, onClose }: Props) {
       return;
     }
     scene.setData(m.castle, m.coins, m.warriors, m.sfxOn);
+    scene.setTurned(turnedRef.current);
     sceneRef.current = scene;
     return () => {
       scene.destroy();
@@ -167,6 +176,21 @@ export function CastleScreen({ meta, onMeta, onClose }: Props) {
   useEffect(() => {
     sceneRef.current?.setData(meta.castle, meta.coins, meta.warriors, meta.sfxOn);
   }, [meta]);
+
+  // Größe des Spielbereichs beobachten (Hoch- oder Querformat?)
+  useEffect(() => {
+    const parent = rootRef.current?.parentElement;
+    if (!parent) return;
+    const measure = () => setBox({ w: parent.clientWidth, h: parent.clientHeight });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(parent);
+    return () => ro.disconnect();
+  }, []);
+
+  useEffect(() => {
+    sceneRef.current?.setTurned(turned);
+  }, [turned]);
 
   // Uhr für Produktionsanzeigen
   useEffect(() => {
@@ -267,165 +291,187 @@ export function CastleScreen({ meta, onMeta, onClose }: Props) {
     );
   }
 
+  // Hochkant gehalten: Breite und Höhe tauschen und um 90° drehen
+  const turnStyle: CSSProperties | undefined =
+    turned && box
+      ? {
+          width: box.h,
+          height: box.w,
+          left: (box.w - box.h) / 2,
+          top: (box.h - box.w) / 2,
+          right: "auto",
+          bottom: "auto",
+          transform: "rotate(90deg)",
+        }
+      : undefined;
+
   return (
-    <section className="kingdom" aria-label="Königreich">
-      <canvas ref={glRef} className="kingdom-canvas" aria-hidden />
-      <canvas ref={uiRef} className="kingdom-canvas kingdom-ui" aria-label="Königreich, ziehen zum Bewegen" />
-
-      <header className="kingdom-top">
-        <button type="button" className="icon-btn" aria-label="Zurück zum Menü" onClick={onClose}>
-          <ArrowLeft size={20} strokeWidth={2.6} />
-        </button>
-        <div className="kingdom-res" aria-label="Rohstoffe">
-          {(["gold", "food", "stone", "coal"] as Resource[]).map((r) => {
-            const Icon = RES_ICON[r];
-            return (
-              <span key={r} className={`res res-${r}`} title={RES_NAME[r]}>
-                <Icon size={15} strokeWidth={2.6} aria-hidden />
-                <span className="tabular-nums">{meta.test ? "∞" : fmt(wallet[r])}</span>
-              </span>
-            );
-          })}
+    <>
+      {turned && (
+        <div className="turn-hint" aria-hidden>
+          <Smartphone size={54} strokeWidth={2.2} className="turn-hint-phone" />
+          <span>Handy quer halten</span>
         </div>
-      </header>
+      )}
+      <section ref={rootRef} className="kingdom" style={turnStyle} aria-label="Königreich">
+        <canvas ref={glRef} className="kingdom-canvas" aria-hidden />
+        <canvas ref={uiRef} className="kingdom-canvas kingdom-ui" aria-label="Königreich, ziehen zum Bewegen" />
 
-      {!raid && (
-        <div className="kingdom-side">
-          <button type="button" className="btn btn-pink kingdom-attack" onClick={() => scene()?.startRaid()}>
-            <Swords size={18} strokeWidth={2.6} aria-hidden /> Angriff {castle.raid}
+        <header className="kingdom-top">
+          <button type="button" className="icon-btn" aria-label="Zurück zum Menü" onClick={onClose}>
+            <ArrowLeft size={20} strokeWidth={2.6} />
           </button>
-          {ready && (
-            <button type="button" className="btn btn-go kingdom-attack" onClick={() => harvest()}>
-              <Package size={18} strokeWidth={2.6} aria-hidden /> Alles ernten
-            </button>
-          )}
-        </div>
-      )}
-
-      {raid && !raid.result && (
-        <div className="kingdom-raid">
-          <div className="flex items-center justify-between text-sm font-bold">
-            <span>
-              Angriff {raid.level} · Gegner {raid.left}/{raid.total}
-            </span>
-            <span>Schloss</span>
-          </div>
-          <div className="bar hp" aria-label="Schloss-Leben">
-            <span style={{ width: `${(raid.keepHp / Math.max(1, raid.keepMax)) * 100}%` }} />
-          </div>
-          <button type="button" className="btn btn-ink btn-sm" onClick={() => scene()?.endRaid()}>
-            Aufgeben
-          </button>
-        </div>
-      )}
-
-      {raid?.result && (
-        <div className="kingdom-result anim-pop" role="dialog" aria-label="Ergebnis">
-          <h2 className="font-display text-4xl leading-none">{raid.result === "win" ? "Sieg!" : "Bresche!"}</h2>
-          <p className="text-sm font-bold">
-            {raid.result === "win"
-              ? `Die Mauer hält. +${raid.reward} Gold, der nächste Angriff wird härter.`
-              : "Die Angreifer sind durchgebrochen. Nichts geht verloren – baue Mauer und Türme aus."}
-          </p>
-          <button type="button" className="btn btn-go" onClick={finishRaid}>
-            {raid.result === "win" ? `+${raid.reward} Gold einsammeln` : "Weiter"}
-          </button>
-        </div>
-      )}
-
-      {toast && (
-        <p key={toast.n} className="kingdom-toast anim-pop" role="status">
-          {toast.text}
-        </p>
-      )}
-
-      {!raid && placing && (
-        <div className="kingdom-panel">
-          <p className="font-display text-xl leading-none">{KIND_NAME[placing.kind]} bauen</p>
-          <CostRow cost={costFor(placing.kind, 1)} wallet={wallet} />
-          <p className="text-sm font-medium">Ziehe das Gebäude an seinen Platz innerhalb der Mauer.</p>
-          <div className="grid grid-cols-2 gap-2">
-            <button type="button" className="btn btn-ink" onClick={() => scene()?.cancelPlace()}>
-              <X size={18} strokeWidth={2.8} aria-hidden /> Abbrechen
-            </button>
-            <button type="button" className="btn btn-go" disabled={!placing.valid} onClick={confirmPlace}>
-              <Check size={18} strokeWidth={2.8} aria-hidden /> Bauen
-            </button>
-          </div>
-        </div>
-      )}
-
-      {!raid && !placing && building && (
-        <BuildingPanel
-          castle={castle}
-          building={building}
-          coins={coins}
-          now={now}
-          onUpgrade={() => doUpgrade(building)}
-          onHarvest={() => harvest([building.id])}
-          onClose={() => scene()?.select(null)}
-        />
-      )}
-
-      {!raid && !placing && selected === "wall" && (
-        <WallPanel castle={castle} coins={coins} onUpgrade={doWall} onClose={() => scene()?.select(null)} />
-      )}
-
-      {!raid && !placing && selected === null && !sheet && (
-        <button type="button" className="kingdom-build" onClick={() => setSheet(true)} aria-label="Bauen">
-          <Hammer size={30} strokeWidth={2.4} aria-hidden />
-          <span className="font-display text-sm leading-none">Bauen</span>
-        </button>
-      )}
-
-      {!raid && !placing && sheet && (
-        <div className="kingdom-sheet anim-pop" role="dialog" aria-label="Bauen">
-          <div className="flex items-center justify-between">
-            <h2 className="font-display text-2xl leading-none">Bauen</h2>
-            <button type="button" className="icon-btn" aria-label="Schließen" onClick={() => setSheet(false)}>
-              <X size={18} strokeWidth={2.6} />
-            </button>
-          </div>
-          <ul className="kingdom-list">
-            {BUILD_ORDER.map((kind) => {
-              const Icon = ICON[kind];
-              const n = countOf(castle, kind);
-              const max = limitFor(kind, level);
-              const p = PRODUCTION[kind];
-              const block = placeBlock(castle, kind, coins);
+          <div className="kingdom-res" aria-label="Rohstoffe">
+            {(["gold", "food", "stone", "coal"] as Resource[]).map((r) => {
+              const Icon = RES_ICON[r];
               return (
-                <li key={kind}>
-                  <button
-                    type="button"
-                    className="kingdom-item"
-                    onClick={() => startPlace(kind)}
-                    aria-disabled={!!block}
-                  >
-                    <span className="kingdom-badge" aria-hidden>
-                      <Icon size={24} strokeWidth={2.4} />
-                    </span>
-                    <span className="min-w-0 flex-1 text-left">
-                      <span className="flex items-baseline justify-between gap-2">
-                        <span className="font-display text-lg leading-none">{KIND_NAME[kind]}</span>
-                        <span className={n >= max ? "text-xs font-bold text-pink" : "text-xs font-bold"}>
-                          {n}/{max}
-                        </span>
-                      </span>
-                      <span className="block text-xs font-medium">
-                        {p ? `+${perHour(kind, 1)} ${RES_NAME[p.res]}/Std. · ` : ""}
-                        {BLURB[kind]}
-                      </span>
-                      <CostRow cost={costFor(kind, 1)} wallet={wallet} />
-                    </span>
-                  </button>
-                </li>
+                <span key={r} className={`res res-${r}`} title={RES_NAME[r]}>
+                  <Icon size={15} strokeWidth={2.6} aria-hidden />
+                  <span className="tabular-nums">{meta.test ? "∞" : fmt(wallet[r])}</span>
+                </span>
               );
             })}
-          </ul>
-          <p className="text-xs font-medium text-muted">Mehr Plätze gibt es mit jeder Schloss-Stufe.</p>
-        </div>
-      )}
-    </section>
+          </div>
+        </header>
+
+        {!raid && (
+          <div className="kingdom-side">
+            <button type="button" className="btn btn-pink kingdom-attack" onClick={() => scene()?.startRaid()}>
+              <Swords size={18} strokeWidth={2.6} aria-hidden /> Angriff {castle.raid}
+            </button>
+            {ready && (
+              <button type="button" className="btn btn-go kingdom-attack" onClick={() => harvest()}>
+                <Package size={18} strokeWidth={2.6} aria-hidden /> Alles ernten
+              </button>
+            )}
+          </div>
+        )}
+
+        {raid && !raid.result && (
+          <div className="kingdom-raid">
+            <div className="flex items-center justify-between text-sm font-bold">
+              <span>
+                Angriff {raid.level} · Gegner {raid.left}/{raid.total}
+              </span>
+              <span>Schloss</span>
+            </div>
+            <div className="bar hp" aria-label="Schloss-Leben">
+              <span style={{ width: `${(raid.keepHp / Math.max(1, raid.keepMax)) * 100}%` }} />
+            </div>
+            <button type="button" className="btn btn-ink btn-sm" onClick={() => scene()?.endRaid()}>
+              Aufgeben
+            </button>
+          </div>
+        )}
+
+        {raid?.result && (
+          <div className="kingdom-result anim-pop" role="dialog" aria-label="Ergebnis">
+            <h2 className="font-display text-4xl leading-none">{raid.result === "win" ? "Sieg!" : "Bresche!"}</h2>
+            <p className="text-sm font-bold">
+              {raid.result === "win"
+                ? `Die Mauer hält. +${raid.reward} Gold, der nächste Angriff wird härter.`
+                : "Die Angreifer sind durchgebrochen. Nichts geht verloren – baue Mauer und Türme aus."}
+            </p>
+            <button type="button" className="btn btn-go" onClick={finishRaid}>
+              {raid.result === "win" ? `+${raid.reward} Gold einsammeln` : "Weiter"}
+            </button>
+          </div>
+        )}
+
+        {toast && (
+          <p key={toast.n} className="kingdom-toast anim-pop" role="status">
+            {toast.text}
+          </p>
+        )}
+
+        {!raid && placing && (
+          <div className="kingdom-panel">
+            <p className="font-display text-xl leading-none">{KIND_NAME[placing.kind]} bauen</p>
+            <CostRow cost={costFor(placing.kind, 1)} wallet={wallet} />
+            <p className="text-sm font-medium">Ziehe das Gebäude an seinen Platz innerhalb der Mauer.</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" className="btn btn-ink" onClick={() => scene()?.cancelPlace()}>
+                <X size={18} strokeWidth={2.8} aria-hidden /> Abbrechen
+              </button>
+              <button type="button" className="btn btn-go" disabled={!placing.valid} onClick={confirmPlace}>
+                <Check size={18} strokeWidth={2.8} aria-hidden /> Bauen
+              </button>
+            </div>
+          </div>
+        )}
+
+        {!raid && !placing && building && (
+          <BuildingPanel
+            castle={castle}
+            building={building}
+            coins={coins}
+            now={now}
+            onUpgrade={() => doUpgrade(building)}
+            onHarvest={() => harvest([building.id])}
+            onClose={() => scene()?.select(null)}
+          />
+        )}
+
+        {!raid && !placing && selected === "wall" && (
+          <WallPanel castle={castle} coins={coins} onUpgrade={doWall} onClose={() => scene()?.select(null)} />
+        )}
+
+        {!raid && !placing && selected === null && !sheet && (
+          <button type="button" className="kingdom-build" onClick={() => setSheet(true)} aria-label="Bauen">
+            <Hammer size={30} strokeWidth={2.4} aria-hidden />
+            <span className="font-display text-sm leading-none">Bauen</span>
+          </button>
+        )}
+
+        {!raid && !placing && sheet && (
+          <div className="kingdom-sheet anim-pop" role="dialog" aria-label="Bauen">
+            <div className="flex items-center justify-between">
+              <h2 className="font-display text-2xl leading-none">Bauen</h2>
+              <button type="button" className="icon-btn" aria-label="Schließen" onClick={() => setSheet(false)}>
+                <X size={18} strokeWidth={2.6} />
+              </button>
+            </div>
+            <ul className="kingdom-list">
+              {BUILD_ORDER.map((kind) => {
+                const Icon = ICON[kind];
+                const n = countOf(castle, kind);
+                const max = limitFor(kind, level);
+                const p = PRODUCTION[kind];
+                const block = placeBlock(castle, kind, coins);
+                return (
+                  <li key={kind}>
+                    <button
+                      type="button"
+                      className="kingdom-item"
+                      onClick={() => startPlace(kind)}
+                      aria-disabled={!!block}
+                    >
+                      <span className="kingdom-badge" aria-hidden>
+                        <Icon size={24} strokeWidth={2.4} />
+                      </span>
+                      <span className="min-w-0 flex-1 text-left">
+                        <span className="flex items-baseline justify-between gap-2">
+                          <span className="font-display text-lg leading-none">{KIND_NAME[kind]}</span>
+                          <span className={n >= max ? "text-xs font-bold text-pink" : "text-xs font-bold"}>
+                            {n}/{max}
+                          </span>
+                        </span>
+                        <span className="block text-xs font-medium">
+                          {p ? `+${perHour(kind, 1)} ${RES_NAME[p.res]}/Std. · ` : ""}
+                          {BLURB[kind]}
+                        </span>
+                        <CostRow cost={costFor(kind, 1)} wallet={wallet} />
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+            <p className="text-xs font-medium text-muted">Mehr Plätze gibt es mit jeder Schloss-Stufe.</p>
+          </div>
+        )}
+      </section>
+    </>
   );
 }
 

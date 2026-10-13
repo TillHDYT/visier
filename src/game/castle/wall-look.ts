@@ -204,6 +204,7 @@ export class WallLook {
   private geos: THREE.BufferGeometry[] = [];
   private flames: THREE.Points | null = null;
   private flameSize = 0;
+  private flameWorld = 0;
   private time = 0;
 
   /**
@@ -394,6 +395,7 @@ export class WallLook {
       this.group.add(noPick(this.flames));
       this.geos.push(geo);
       this.flameSize = size;
+      this.flameWorld = world;
     }
 
     this.motes = new Motes(Math.round(110 + 170 * strength), fx.motion, fx.colors, h + 1.2, 0.34, spot);
@@ -441,6 +443,14 @@ export class WallLook {
     g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
     g.computeBoundingSphere();
     return g;
+  }
+
+  /**
+   * Punktgröße an das Sichtfeld anpassen: three.js rechnet Punkte ohne
+   * tan(fov/2), die Flammen sollen aber in jeder Ausrichtung gleich groß sein.
+   */
+  fit(fovDeg: number) {
+    if (this.flameWorld) this.flameSize = this.flameWorld / Math.tan((fovDeg * Math.PI) / 360);
   }
 
   tick(dt: number) {
