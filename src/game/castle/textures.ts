@@ -154,6 +154,7 @@ export class Materials {
   /** Lava-Boden wie im Survivor-Spiel (außen und im Innenhof, eigene Wiederholung). */
   readonly lavaOut: THREE.Texture;
   readonly lavaIn: THREE.Texture;
+  readonly lavaPool: THREE.Texture;
   readonly road: THREE.CanvasTexture;
 
   constructor(onLoad?: () => void) {
@@ -167,10 +168,12 @@ export class Materials {
     this.lavaOut = lava(
       new THREE.TextureLoader().load(lavaUrl, () => {
         this.lavaIn.needsUpdate = true;
+        this.lavaPool.needsUpdate = true;
         onLoad?.();
       }),
     );
     this.lavaIn = lava(this.lavaOut.clone());
+    this.lavaPool = lava(this.lavaOut.clone());
     this.road = blocks([35, 12, 58], 6, "#6b5a44", 11);
     const lambert = (key: string, p: THREE.MeshLambertMaterialParameters) =>
       this.map.set(key, new THREE.MeshLambertMaterial(p));

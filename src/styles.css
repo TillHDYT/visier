@@ -568,14 +568,12 @@
 .kingdom-raid {
   position: absolute;
   z-index: 2;
-  max-width: 24rem;
-  margin-inline: auto;
-  top: calc(max(0.6rem, var(--safe-top)) + 3.4rem);
-  left: 0.7rem;
+  top: max(0.6rem, var(--safe-top));
   right: 0.7rem;
+  max-width: calc(100% - 5rem);
   display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
+  align-items: center;
+  gap: 0.6rem;
   border: 3px solid var(--color-ink);
   border-radius: var(--radius-card);
   background: rgba(255, 246, 234, 0.92);
@@ -584,8 +582,24 @@
 }
 
 .kingdom-raid .btn {
-  align-self: flex-end;
   width: auto;
+  min-height: 2.2rem;
+  padding: 0.2rem 0.7rem;
+}
+
+.kingdom-raid-keep {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  width: 7rem;
+}
+
+.kingdom-raid-keep .bar {
+  flex: 1;
+}
+
+.kingdom-res[hidden] {
+  display: none;
 }
 
 /* Querformat: Fenster links unten angedockt, die Karte bleibt rechts frei */

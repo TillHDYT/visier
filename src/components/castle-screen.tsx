@@ -321,7 +321,7 @@ export function CastleScreen({ meta, onMeta, onClose }: Props) {
           <button type="button" className="icon-btn" aria-label="Zurück zum Menü" onClick={onClose}>
             <ArrowLeft size={20} strokeWidth={2.6} />
           </button>
-          <div className="kingdom-res" aria-label="Rohstoffe">
+          <div className="kingdom-res" aria-label="Rohstoffe" hidden={!!raid}>
             {(["gold", "food", "stone", "coal"] as Resource[]).map((r) => {
               const Icon = RES_ICON[r];
               return (
@@ -348,16 +348,17 @@ export function CastleScreen({ meta, onMeta, onClose }: Props) {
         )}
 
         {raid && !raid.result && (
+          // Schmale Leiste oben rechts, damit die Karte frei bleibt
           <div className="kingdom-raid">
-            <div className="flex items-center justify-between text-sm font-bold">
-              <span>
-                Angriff {raid.level} · Gegner {raid.left}/{raid.total}
+            <span className="text-sm font-bold whitespace-nowrap">
+              Angriff {raid.level} · {raid.left}/{raid.total}
+            </span>
+            <span className="kingdom-raid-keep" aria-label="Schloss-Leben">
+              <CastleIcon size={16} strokeWidth={2.6} aria-hidden />
+              <span className="bar hp">
+                <span style={{ width: `${(raid.keepHp / Math.max(1, raid.keepMax)) * 100}%` }} />
               </span>
-              <span>Schloss</span>
-            </div>
-            <div className="bar hp" aria-label="Schloss-Leben">
-              <span style={{ width: `${(raid.keepHp / Math.max(1, raid.keepMax)) * 100}%` }} />
-            </div>
+            </span>
             <button type="button" className="btn btn-ink btn-sm" onClick={() => scene()?.endRaid()}>
               Aufgeben
             </button>

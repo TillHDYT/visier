@@ -945,15 +945,16 @@ export function landscape(mats: Materials): THREE.Group {
   // See im Osten
   const water = new THREE.Mesh(
     new THREE.CircleGeometry(1, 40),
-    new THREE.MeshPhongMaterial({
-      color: "#ff6a1a",
-      emissive: new THREE.Color("#ff3a00"),
-      shininess: 90,
-      specular: new THREE.Color("#cfe8ff"),
-      transparent: true,
-      opacity: 0.92,
+    // Lava-See: dieselbe Lava, hier flüssig und hell glühend
+    new THREE.MeshLambertMaterial({
+      map: mats.lavaPool,
+      color: new THREE.Color(1.3, 1.1, 1.0),
+      emissive: new THREE.Color("#ffffff"),
+      emissiveMap: mats.lavaPool,
+      emissiveIntensity: 1.1,
     }),
   );
+  mats.lavaPool.repeat.set(1.6, 2.4);
   water.rotation.x = -Math.PI / 2;
   water.scale.set(14, 22, 1);
   water.position.set(INNER1 + 22, 0.01, WORLD / 2 - 4);
