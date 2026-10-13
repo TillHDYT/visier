@@ -672,6 +672,43 @@
   border-color: #b07800;
 }
 
+.wall-styles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.wall-styles li {
+  display: grid;
+  justify-items: center;
+  gap: 0.05rem;
+  padding: 0.3rem 0.2rem;
+  border-radius: 0.6rem;
+  border: 2px solid transparent;
+  background: rgb(0 0 0 / 0.06);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.wall-styles li.on {
+  border-color: var(--color-yellow);
+  background: rgb(255 208 0 / 0.18);
+}
+
+.wall-styles li.locked img {
+  filter: grayscale(1) brightness(0.8);
+  opacity: 0.6;
+}
+
+.wall-styles img {
+  width: 100%;
+  max-width: 5.5rem;
+  aspect-ratio: 1;
+  object-fit: contain;
+}
+
 .kingdom-goal {
   display: grid;
   gap: 0.2rem;

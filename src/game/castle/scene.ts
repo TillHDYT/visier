@@ -11,6 +11,7 @@ import {
   PRODUCTION,
   SIZE,
   WORLD,
+  castleLevel,
   fits,
   freeSpotNear,
   move,
@@ -23,6 +24,7 @@ import {
 } from "./model";
 import { CastleLook, castleOpaqueAt, preloadCastleArt } from "./castle-look";
 import { Decor, Templates, cityWall, landscape, unitGeometry } from "./meshes";
+import { WallLook, preloadWallArt, wallArtReady, wallStyleOf } from "./wall-look";
 import { SEG_PER_SIDE, foesLeft, segmentCenter, startRaid, stepRaid, type Raid, type RaidEvent } from "./raid";
 import { Materials } from "./textures";
 
@@ -82,6 +84,8 @@ export class CastleScene {
   private builtAs = new Map<number, string>();
   private wall: THREE.Group | null = null;
   private wallKey = "";
+  private wallLook: WallLook | null = null;
+  private wallWaiting = false;
   private ghost: { kind: BuildingKind; x: number; y: number; group: THREE.Group } | null = null;
   private ghostPad: THREE.Mesh;
   private selPad: THREE.Mesh;
@@ -176,6 +180,7 @@ export class CastleScene {
     const keep = castle.buildings.find((b) => b.kind === "castle");
     if (keep) this.target.set(keep.x + 3, 0, keep.y + 8);
     preloadCastleArt();
+    preloadWallArt();
     this.sync();
 
     this.ro = new ResizeObserver(() => this.resize());
@@ -215,6 +220,7 @@ export class CastleScene {
     el.removeEventListener("wheel", this.onWheel);
     el.removeEventListener("contextmenu", this.onContext);
     this.look?.dispose();
+    this.wallLook?.dispose();
     this.scene.traverse((o) => {
       const m = o as THREE.Mesh;
       m.geometry?.dispose?.();
@@ -372,13 +378,37 @@ export class CastleScene {
 
   private sync() {
     let changed = false;
-    if (this.wallKey !== `${this.castle.wall}|${this.castle.skin}`) {
-      if (this.wall) this.scene.remove(this.wall);
-      this.mats.setSkin(this.castle.skin);
-      this.wall = cityWall(this.mats, this.castle.wall);
-      this.scene.add(this.wall);
-      this.wallKey = `${this.castle.wall}|${this.castle.skin}`;
-      changed = true;
+    // Die Mauer wächst mit dem Schloss: ab Stufe 5 Gift, ab 10 Eis, ab 15 Feuer.
+    const keepLevel = castleLevel(this.castle);
+    const ws = wallStyleOf(keepLevel);
+    const wallKey = ws.style
+      ? `${this.castle.wall}|${ws.style}|${keepLevel}`
+      : `${this.castle.wall}|${this.castle.skin}`;
+    if (this.wallKey !== wallKey) {
+      // Bilder noch nicht geladen: alte Mauer bleibt stehen, bis sie da sind.
+      const ready =
+        !ws.style ||
+        (!this.wallWaiting &&
+          wallArtReady(ws.style, () => {
+            this.wallWaiting = false;
+            if (this.destroyed) return;
+            this.wallKey = "";
+            this.sync();
+          }));
+      if (!ready) this.wallWaiting = true;
+      else {
+        this.removeWall();
+        if (ws.style) {
+          this.wallLook = new WallLook(this.mats, ws.style, this.castle.wall, ws.strength);
+          this.wall = this.wallLook.group;
+        } else {
+          this.mats.setSkin(this.castle.skin);
+          this.wall = cityWall(this.mats, this.castle.wall);
+        }
+        this.scene.add(this.wall);
+        this.wallKey = wallKey;
+        changed = true;
+      }
     }
     const seen = new Set<number>();
     for (const b of this.castle.buildings) {
@@ -428,6 +458,20 @@ export class CastleScene {
     }
     this.updateSelPad();
     this.dirty = true;
+  }
+
+  /** Alte Mauer entfernen; geteilte Materialien bleiben, Geometrien werden frei. */
+  private removeWall() {
+    if (!this.wall) return;
+    this.scene.remove(this.wall);
+    if (this.wallLook) this.wallLook.dispose();
+    else
+      this.wall.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (m.isMesh) m.geometry.dispose();
+      });
+    this.wallLook = null;
+    this.wall = null;
   }
 
   private updateSelPad() {
@@ -751,12 +795,13 @@ export class CastleScene {
         animating = true;
       }
     }
-    const ambient = (this.spinners.length > 0 || !!this.look?.animated) && now - this.overlayAt > 33;
+    const ambient = (this.spinners.length > 0 || !!this.look?.animated || !!this.wallLook) && now - this.overlayAt > 33;
     if (ambient) {
       // Windmühlen und Schloss-Partikel: 30 Bilder pro Sekunde genügen und schonen den Akku.
       const step = Math.min(0.1, (now - this.overlayAt) / 1000);
       for (const s of this.spinners) s.rotation.z += step * 1.2;
       this.look?.tick(step);
+      this.wallLook?.tick(step);
     }
 
     this.tickFx(dt);

@@ -50,6 +50,7 @@ src/
       textures.ts          Königreich: prozedurale Texturen und Materialien (Stein, Holz, Ziegel …)
       meshes.ts            Königreich: 3D-Modelle aller Gebäude je Stufe, Stadtmauer, Landschaft
       castle-look.ts       Königreich: Schloss aus fünf gemalten Bildern mit stufenweise wachsenden Effekten
+      wall-look.ts         Königreich: Stadtmauer im Schloss-Stil (Gift/Eis/Feuer), texturiert aus den Mauer-Bildern
       scene.ts             Königreich: Three.js-Szene, Kamera, Bauen, Verschieben, Ernte-Blasen, Angriffe
       raid.ts              Königreich: Angriffs-Simulation an der festen Mauer
     icons.tsx              Symbole
@@ -67,11 +68,18 @@ scripts/                   Spieltest und Einzelseiten-Build
 
 - 3D-Ansicht (Three.js) mit Licht, Schatten und Texturen; wird erst beim Öffnen geladen.
 - Feste Stadtmauer um einen 36 × 36 Felder großen Innenhof. Sie lässt sich nicht verschieben, nur upgraden (Palisade bis Königsmauer).
+- Die Mauer wächst mit dem Schloss mit: ab Schloss-Stufe 5 Gift-Mauer, ab 10 Eis-Mauer, ab 15 Feuer-Mauer (auch bei der Mordor-Festung). Ihre Flächen stammen aus den gemalten Mauer-Bildern (`src/assets/rampart-*`); Leuchtrisse, Bodennebel und Partikel werden mit jeder Schloss-Stufe stärker.
 - Gebäude: Schloss, Wachturm, Wohnhaus, Feld, Bauernhof, Steinbruch, Kohlewerk, Goldmine. Alle bis Stufe 20: alle vier Stufen eine neue Bauform, dazwischen wachsen die Gebäude und bekommen Steinkante, Laternen und Banner. Die Schloss-Stufe begrenzt die anderen.
 - Schloss: Königsburg (Stufe 1), Gift-Schloss (ab 5), Eis-Schloss (ab 10), Feuer-Schloss (ab 15), Mordor-Festung (20). Dazwischen färbt sich das Schloss mit jeder Stufe mehr in den kommenden Stil; Aura, Leuchten, Fackeln und Partikel werden stärker.
 - Wie in Clash of Clans: Das Schloss steigt erst auf Stufe N, wenn die Stadtmauer und drei Viertel der Gebäude mindestens Stufe N − 1 haben.
 - Produktion läuft auch, wenn das Spiel geschlossen ist (bis zu 8 Stunden Speicher). Goldminen liefern Gold, die anderen Nahrung, Stein und Kohle für Upgrades.
 - Angriffe starten nur über den Knopf; die Mauer hält frühe Angriffe sicher ab.
+
+## Testmodus
+
+Voreingestellt an (`TEST_DEFAULT` in `src/game/meta.ts`): Gold und Rohstoffe sind unbegrenzt, Käufe kosten nichts.
+Das echte Gold und die echten Rohstoffe bleiben dabei unverändert und sind nach dem Ausschalten wieder da.
+Ausschalten unter Optionen → „Testmodus“ oder dauerhaft mit `TEST_DEFAULT = false`.
 
 ## Deployment
 

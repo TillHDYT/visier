@@ -58,7 +58,8 @@ import {
   type Resource,
 } from "@/game/castle/model";
 import { CastleScene, type PlaceView, type RaidView } from "@/game/castle/scene";
-import type { Meta } from "@/game/meta";
+import { WALL_STYLES, wallStyleOf } from "@/game/castle/wall-look";
+import { settle, spendable, type Meta } from "@/game/meta";
 
 const KIT_GOLD = 400;
 
@@ -113,7 +114,8 @@ export function CastleScreen({ meta, onMeta, onClose }: Props) {
 
   const say = useCallback((text: string) => setToast((t) => ({ text, n: (t?.n ?? 0) + 1 })), []);
   const commit = useCallback(
-    (castle: Castle, coins: number) => onMeta({ ...metaRef.current, castle, coins }),
+    // Im Testmodus bleiben echtes Gold und echte Rohstoffe unangetastet.
+    (castle: Castle, coins: number) => onMeta(settle(metaRef.current, { ...metaRef.current, castle, coins })),
     [onMeta],
   );
 
@@ -193,22 +195,25 @@ export function CastleScreen({ meta, onMeta, onClose }: Props) {
     return () => window.clearTimeout(id);
   }, [toast]);
 
-  const castle = meta.castle;
-  const wallet = walletOf(castle, meta.coins);
+  // Bezahlt wird mit `view`: im Testmodus mit unbegrenzt Gold und Rohstoffen.
+  const view = spendable(meta);
+  const castle = view.castle;
+  const coins = view.coins;
+  const wallet = walletOf(castle, coins);
   const level = castleLevel(castle);
   const building = typeof selected === "number" ? (castle.buildings.find((b) => b.id === selected) ?? null) : null;
   const scene = () => sceneRef.current;
   const ready = castle.buildings.some((b) => pending(b, now) >= Math.max(1, rateOf(b) * 0.05));
 
   function doUpgrade(b: Building) {
-    const r = upgrade(castle, b.id, meta.coins);
+    const r = upgrade(castle, b.id, coins);
     if (!r) return;
     commit(r.castle, r.coins);
     scene()?.celebrate(b.id, b.level + 1);
   }
 
   function doWall() {
-    const r = upgradeWall(castle, meta.coins);
+    const r = upgradeWall(castle, coins);
     if (!r) return;
     commit(r.castle, r.coins);
     scene()?.celebrate("wall", r.castle.wall);
@@ -216,7 +221,7 @@ export function CastleScreen({ meta, onMeta, onClose }: Props) {
 
   function startPlace(kind: BuildingKind) {
     setSheet(false);
-    const block = placeBlock(castle, kind, meta.coins);
+    const block = placeBlock(castle, kind, coins);
     if (block) {
       say(block);
       return;
@@ -227,7 +232,7 @@ export function CastleScreen({ meta, onMeta, onClose }: Props) {
   function confirmPlace() {
     const spot = scene()?.confirmPlace();
     if (!spot) return;
-    const r = place(castle, spot.kind, spot.x, spot.y, meta.coins);
+    const r = place(castle, spot.kind, spot.x, spot.y, coins);
     if (!r) {
       say("Hier ist kein Platz");
       return;
@@ -273,7 +278,7 @@ export function CastleScreen({ meta, onMeta, onClose }: Props) {
             return (
               <span key={r} className={`res res-${r}`} title={RES_NAME[r]}>
                 <Icon size={15} strokeWidth={2.6} aria-hidden />
-                <span className="tabular-nums">{fmt(wallet[r])}</span>
+                <span className="tabular-nums">{meta.test ? "∞" : fmt(wallet[r])}</span>
               </span>
             );
           })}
@@ -350,7 +355,7 @@ export function CastleScreen({ meta, onMeta, onClose }: Props) {
         <BuildingPanel
           castle={castle}
           building={building}
-          coins={meta.coins}
+          coins={coins}
           now={now}
           onUpgrade={() => doUpgrade(building)}
           onHarvest={() => harvest([building.id])}
@@ -359,7 +364,7 @@ export function CastleScreen({ meta, onMeta, onClose }: Props) {
       )}
 
       {!raid && !placing && selected === "wall" && (
-        <WallPanel castle={castle} coins={meta.coins} onUpgrade={doWall} onClose={() => scene()?.select(null)} />
+        <WallPanel castle={castle} coins={coins} onUpgrade={doWall} onClose={() => scene()?.select(null)} />
       )}
 
       {!raid && !placing && selected === null && !sheet && (
@@ -383,7 +388,7 @@ export function CastleScreen({ meta, onMeta, onClose }: Props) {
               const n = countOf(castle, kind);
               const max = limitFor(kind, level);
               const p = PRODUCTION[kind];
-              const block = placeBlock(castle, kind, meta.coins);
+              const block = placeBlock(castle, kind, coins);
               return (
                 <li key={kind}>
                   <button
@@ -583,6 +588,10 @@ function WallPanel({
   const block = wallUpgradeBlock(castle, coins);
   const now = statsFor("wall", l);
   const next = l < MAX_LEVEL ? statsFor("wall", l + 1) : null;
+  const keep = castleLevel(castle);
+  const style = WALL_STYLES.find((s) => s.key === wallStyleOf(keep).style) ?? null;
+  // Wie bei Stufen-Titeln: ab Gift-Stil zählt der Mauer-Stil statt der Bauform.
+  const title = (level: number) => style?.name ?? levelTitle("wall", level);
   return (
     <div className="kingdom-panel">
       <div className="flex items-start gap-3">
@@ -590,7 +599,7 @@ function WallPanel({
           <Shield size={26} strokeWidth={2.4} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="font-display text-xl leading-none">Stadtmauer · {levelTitle("wall", l)}</p>
+          <p className="font-display text-xl leading-none">Stadtmauer · {title(l)}</p>
           <Stars level={l} />
         </div>
         <button type="button" className="icon-btn" aria-label="Schließen" onClick={onClose}>
@@ -600,9 +609,18 @@ function WallPanel({
       <p className="text-xs font-bold">
         Fest um das ganze Königreich · {now.hp} Leben je Abschnitt · Mauertürme {now.dmg} Schaden
       </p>
+      <ul className="wall-styles" aria-label="Mauer-Stile">
+        {WALL_STYLES.map((s) => (
+          <li key={s.key} className={s.key === style?.key ? "on" : keep >= s.from ? "" : "locked"}>
+            <img src={s.preview} alt="" />
+            <span>{s.name}</span>
+            <span className="text-muted">ab Schloss {s.from}</span>
+          </li>
+        ))}
+      </ul>
       {next && (
         <p className="text-xs font-bold text-pink">
-          Stufe {l + 1} „{levelTitle("wall", l + 1)}“: {next.hp} Leben · {next.dmg} Schaden
+          Stufe {l + 1} „{title(l + 1)}“: {next.hp} Leben · {next.dmg} Schaden
         </p>
       )}
       {next && <CostRow cost={costFor("wall", l + 1)} wallet={walletOf(castle, coins)} />}

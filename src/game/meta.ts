@@ -28,9 +28,35 @@ export type Meta = {
   skills: Record<string, number>;
   warriors: number;
   castle: Castle;
+  /** Testmodus: Gold und Rohstoffe unbegrenzt; die echten Werte bleiben erhalten. */
+  test: boolean;
 };
 
 const KEY = "visier-meta-v1";
+
+/**
+ * Testmodus ist voreingestellt an, damit alles ohne Sammeln ausprobiert werden
+ * kann. Abschalten: in den Optionen oder hier auf `false` setzen.
+ */
+export const TEST_DEFAULT = true;
+/** So viel „hat“ man im Testmodus von allem. */
+export const UNLIMITED = 1e12;
+
+/** Sicht auf den Stand zum Bezahlen: im Testmodus mit unbegrenzt Gold und Rohstoffen. */
+export function spendable(m: Meta): Meta {
+  if (!m.test) return m;
+  return {
+    ...m,
+    coins: UNLIMITED,
+    castle: { ...m.castle, res: { food: UNLIMITED, stone: UNLIMITED, coal: UNLIMITED } },
+  };
+}
+
+/** Übernimmt einen Kauf; im Testmodus bleiben Gold und Rohstoffe unangetastet. */
+export function settle(real: Meta, next: Meta): Meta {
+  if (!real.test) return next;
+  return { ...next, coins: real.coins, castle: { ...next.castle, res: real.castle.res } };
+}
 
 export const RARITY_NAME = ["Gewöhnlich", "Selten", "Episch", "Legendär"] as const;
 export const SLOT_NAME: Record<Slot, string> = {
@@ -81,6 +107,7 @@ export function defaultMeta(): Meta {
     skills: {},
     warriors: 0,
     castle: defaultCastle(),
+    test: TEST_DEFAULT,
   };
 }
 
@@ -132,6 +159,7 @@ export function loadMeta(): Meta {
       skills: readSkills(p.skills),
       warriors: clampInt(p.warriors, WARRIOR_CAP),
       castle: readCastle(p.castle),
+      test: typeof p.test === "boolean" ? p.test : TEST_DEFAULT,
     };
   } catch {
     return base;

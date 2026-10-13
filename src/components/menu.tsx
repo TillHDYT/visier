@@ -10,6 +10,7 @@ import {
   SKILL_CAP,
   SKIN_INFO,
   SLOT_NAME,
+  UNLIMITED,
   buyBooster,
   buyRank,
   buySkill,
@@ -20,7 +21,9 @@ import {
   gearLine,
   rankCost,
   rollGear,
+  settle,
   skillCost,
+  spendable,
   type Meta,
 } from "@/game/meta";
 import { nextPermLabel } from "@/game/skills";
@@ -47,8 +50,10 @@ type Props = {
 
 /** Hauptmenü mit seinen Unterseiten (Optionen, Shop, Skins, Werkstatt). */
 export function MenuScreen({ meta, panel, onPanel, onMeta, onStart, onPrime }: Props) {
+  // Läden rechnen mit `shop`; im Testmodus ist dort unbegrenzt Gold, das echte bleibt.
+  const shop = spendable(meta);
   const apply = (next: Meta | null) => {
-    if (next) onMeta(next);
+    if (next) onMeta(settle(meta, next));
   };
   return (
     <section className={panel === "shop" ? "poster" : "poster poster-home"} onPointerDown={onPrime}>
@@ -61,9 +66,9 @@ export function MenuScreen({ meta, panel, onPanel, onMeta, onStart, onPrime }: P
       )}
       {panel === "home" && <Home meta={meta} onPanel={onPanel} onMeta={onMeta} onStart={onStart} />}
       {panel === "options" && <Options meta={meta} onMeta={onMeta} onBack={() => onPanel("home")} />}
-      {panel === "market" && <Market meta={meta} apply={apply} onBack={() => onPanel("home")} />}
-      {panel === "skins" && <Skins meta={meta} apply={apply} onBack={() => onPanel("home")} />}
-      {panel === "shop" && <Workshop meta={meta} apply={apply} onBack={() => onPanel("home")} />}
+      {panel === "market" && <Market meta={shop} apply={apply} onBack={() => onPanel("home")} />}
+      {panel === "skins" && <Skins meta={shop} apply={apply} onBack={() => onPanel("home")} />}
+      {panel === "shop" && <Workshop meta={shop} apply={apply} onBack={() => onPanel("home")} />}
     </section>
   );
 }
@@ -112,7 +117,7 @@ function Home({ meta, onPanel, onMeta, onStart }: Pick<Props, "meta" | "onPanel"
         </button>
       </div>
       <div className="flex items-center justify-between text-sm font-bold">
-        <span className="tabular-nums">{meta.coins} Gold</span>
+        <span className="tabular-nums">{meta.test ? "∞ Gold · Testmodus" : `${meta.coins} Gold`}</span>
         <span>{meta.runs} Läufe</span>
       </div>
       <button type="button" className="btn btn-ink mt-auto" onClick={() => onPanel("shop")}>
@@ -142,7 +147,15 @@ function Options({ meta, onMeta, onBack }: { meta: Meta; onMeta: (m: Meta) => vo
         onToggle={() => onMeta({ ...meta, sfxOn: !meta.sfxOn, mute: meta.sfxOn })}
       />
       <Toggle label="Wackeln" on={meta.shake} onToggle={() => onMeta({ ...meta, shake: !meta.shake })} />
-      <p className="text-sm font-medium text-muted">Musik und Effekte laufen getrennt. Die Wahl bleibt gespeichert.</p>
+      <Toggle
+        label="Testmodus: unendlich Gold & Rohstoffe"
+        on={meta.test}
+        onToggle={() => onMeta({ ...meta, test: !meta.test })}
+      />
+      <p className="text-sm font-medium text-muted">
+        Musik und Effekte laufen getrennt. Im Testmodus kostet nichts etwas; dein echtes Gold und deine Rohstoffe
+        bleiben dabei unverändert und sind nach dem Ausschalten wieder da.
+      </p>
       <button type="button" className="btn btn-go mt-auto" onClick={onBack}>
         Zurück
       </button>
@@ -156,7 +169,7 @@ function Header({ title, coins }: { title: string; coins: number }) {
   return (
     <div className="flex items-center justify-between">
       <h2 className="font-display text-3xl leading-none">{title}</h2>
-      <span className="font-display text-2xl leading-none tabular-nums">{coins} G</span>
+      <span className="font-display text-2xl leading-none tabular-nums">{coins >= UNLIMITED ? "∞" : coins} G</span>
     </div>
   );
 }

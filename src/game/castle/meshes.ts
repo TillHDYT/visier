@@ -146,13 +146,16 @@ function gableGeo(w: number, h: number, d: number) {
 }
 
 /** Sammelt Körper je Material und fasst sie zusammen. */
+/** Material eines Kit-Teils: gemeinsames Material per Name oder ein eigenes. */
+export type KitMat = Mat | THREE.Material;
+
 export class Kit {
-  private parts = new Map<Mat, THREE.BufferGeometry[]>();
+  private parts = new Map<KitMat, THREE.BufferGeometry[]>();
   private extras: THREE.Object3D[] = [];
   constructor(private mats: Materials) {}
 
   add(
-    mat: Mat,
+    mat: KitMat,
     geo: THREE.BufferGeometry,
     x: number,
     y: number,
@@ -290,7 +293,7 @@ export class Kit {
       const merged = mergeGeometries(list, false);
       if (!merged) continue;
       merged.computeBoundingSphere();
-      const mesh = new THREE.Mesh(merged, this.mats.get(mat));
+      const mesh = new THREE.Mesh(merged, typeof mat === "string" ? this.mats.get(mat) : mat);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       group.add(mesh);

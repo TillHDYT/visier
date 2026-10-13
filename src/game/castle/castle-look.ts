@@ -15,7 +15,7 @@ import { CASTLE_STAGES, SIZE, castleStage, type CastleStage } from "./model";
 import type { Mat, Materials } from "./textures";
 
 type StageKey = CastleStage["key"];
-type Motion = "rise" | "ember" | "snow" | "smoke";
+export type Motion = "rise" | "ember" | "snow" | "smoke";
 
 type Theme = {
   url: string;
@@ -178,7 +178,7 @@ function glow(): THREE.Texture {
   return glowTex;
 }
 
-function noPick(o: THREE.Object3D) {
+export function noPick(o: THREE.Object3D) {
   o.raycast = () => {};
   return o;
 }
@@ -186,7 +186,10 @@ function noPick(o: THREE.Object3D) {
 // ---------------------------------------------------------------------------
 // Partikel
 
-class Motes {
+/** Startpunkt (x, z) eines Partikels; ohne Angabe ein Ring um den Ursprung. */
+export type Spot = () => readonly [number, number];
+
+export class Motes {
   readonly points: THREE.Points;
   private pos: Float32Array;
   private col: Float32Array;
@@ -201,6 +204,7 @@ class Motes {
     colors: string[],
     private height: number,
     size: number,
+    private spot?: Spot,
   ) {
     this.pos = new Float32Array(count * 3);
     this.col = new Float32Array(count * 4);
@@ -235,8 +239,14 @@ class Motes {
     const r = 1 + Math.random() * 2.6;
     const p = this.pos;
     const v = this.vel;
-    p[i * 3] = Math.cos(a) * r;
-    p[i * 3 + 2] = Math.sin(a) * r;
+    if (this.spot) {
+      const [x, z] = this.spot();
+      p[i * 3] = x;
+      p[i * 3 + 2] = z;
+    } else {
+      p[i * 3] = Math.cos(a) * r;
+      p[i * 3 + 2] = Math.sin(a) * r;
+    }
     v[i * 3] = (Math.random() - 0.5) * 0.3;
     v[i * 3 + 2] = (Math.random() - 0.5) * 0.3;
     if (this.motion === "snow") {
@@ -244,8 +254,10 @@ class Motes {
       v[i * 3 + 1] = -(0.35 + Math.random() * 0.4);
       this.life[i] = 3 + Math.random() * 3;
     } else if (this.motion === "smoke") {
-      p[i * 3] *= 0.6;
-      p[i * 3 + 2] *= 0.6;
+      if (!this.spot) {
+        p[i * 3] *= 0.6;
+        p[i * 3 + 2] *= 0.6;
+      }
       p[i * 3 + 1] = h * (0.55 + Math.random() * 0.3);
       v[i * 3 + 1] = 0.5 + Math.random() * 0.5;
       this.life[i] = 3 + Math.random() * 2;

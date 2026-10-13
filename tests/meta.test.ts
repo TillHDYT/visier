@@ -8,9 +8,12 @@ import {
   loadMeta,
   rollGear,
   saveMeta,
+  settle,
   skillCost,
+  spendable,
   type Meta,
 } from "@/game/meta";
+import { place, upgradeWall } from "@/game/castle/model";
 import { EVO_OF, permBonus } from "@/game/skills";
 
 function memoryStorage() {
@@ -115,6 +118,30 @@ describe("Shop", () => {
     expect(chapterUnlocked(m, 2)).toBe(false);
     expect(chapterUnlocked({ ...m, best: [240, 0, 0] }, 2)).toBe(true);
     expect(chapterUnlocked({ ...m, best: [240, 480, 0] }, 3)).toBe(true);
+  });
+});
+
+describe("Testmodus", () => {
+  it("kauft ohne Gold, echtes Gold und Rohstoffe bleiben unverändert", () => {
+    const real: Meta = { ...defaultMeta(), coins: 5, test: true };
+    const bought = buySkill(spendable(real), "katana")!;
+    const next = settle(real, bought);
+    expect(next.skills.katana).toBe(1);
+    expect(next.coins).toBe(5);
+    const shop = spendable(real);
+    const r = place(shop.castle, "farm", 8, 8, shop.coins)!;
+    const after = settle(real, { ...real, castle: r.castle, coins: r.coins });
+    expect(after.castle.buildings.some((b) => b.kind === "farm")).toBe(true);
+    expect(after.castle.res).toEqual(real.castle.res);
+    expect(after.coins).toBe(5);
+  });
+
+  it("ohne Testmodus wird normal bezahlt", () => {
+    const real: Meta = { ...defaultMeta(), coins: 1000, test: false };
+    expect(spendable(real)).toBe(real);
+    const bought = settle(real, buySkill(real, "katana")!);
+    expect(bought.coins).toBe(1000 - skillCost(0));
+    expect(upgradeWall(real.castle, 0)).toBeNull();
   });
 });
 
