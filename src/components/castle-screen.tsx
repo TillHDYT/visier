@@ -81,7 +81,7 @@ const BUILD_ORDER: BuildingKind[] = ["goldmine", "field", "farm", "mine", "coal"
 
 const BLURB: Record<BuildingKind, string> = {
   castle:
-    "Herz des Königreichs. Seine Stufe begrenzt alle anderen Gebäude; wechselt sein Aussehen ab Stufe 5, 10, 15 und 20.",
+    "Herz des Glutreichs. Seine Stufe begrenzt alle anderen Gebäude; wechselt sein Aussehen ab Stufe 5, 10, 15 und 20.",
   tower: "Schießt auf Angreifer innerhalb der Mauer.",
   house: "Stellt Verteidiger, die an die Mauer eilen.",
   field: "Erntet Nahrung.",
@@ -209,7 +209,7 @@ export function CastleScreen({ meta, onMeta, onClose }: Props) {
     );
     if (!m.castle.kit) {
       onMeta({ ...m, coins: m.coins + KIT_GOLD, castle: { ...m.castle, kit: true } });
-      say(`Willkommen im Königreich: +${KIT_GOLD} Gold`);
+      say(`Willkommen im Glutreich: +${KIT_GOLD} Gold`);
     } else if (gold > 0) say(`Deine Goldminen haben ${gold} Gold gefördert – antippen zum Einsammeln`);
   }, [onMeta, say]);
 
@@ -313,9 +313,9 @@ export function CastleScreen({ meta, onMeta, onClose }: Props) {
           <span>Handy quer halten</span>
         </div>
       )}
-      <section ref={rootRef} className="kingdom" style={turnStyle} aria-label="Königreich">
+      <section ref={rootRef} className="kingdom" style={turnStyle} aria-label="Glutreich">
         <canvas ref={glRef} className="kingdom-canvas" aria-hidden />
-        <canvas ref={uiRef} className="kingdom-canvas kingdom-ui" aria-label="Königreich, ziehen zum Bewegen" />
+        <canvas ref={uiRef} className="kingdom-canvas kingdom-ui" aria-label="Glutreich, ziehen zum Bewegen" />
 
         <header className="kingdom-top">
           <button type="button" className="icon-btn" aria-label="Zurück zum Menü" onClick={onClose}>
@@ -658,7 +658,7 @@ function WallPanel({
         </button>
       </div>
       <p className="text-xs font-bold">
-        Fest um das ganze Königreich · {now.hp} Leben je Abschnitt · Mauertürme {now.dmg} Schaden
+        Fest um das ganze Glutreich · {now.hp} Leben je Abschnitt · Mauertürme {now.dmg} Schaden
       </p>
       <ul className="wall-styles" aria-label="Mauer-Stile">
         {WALL_STYLES.map((s) => (

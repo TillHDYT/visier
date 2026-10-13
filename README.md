@@ -64,7 +64,9 @@ scripts/                   Spieltest und Einzelseiten-Build
 2. **Drachenrüstung**: bei Stab-Stufe 5 wählst du Feuer oder Eis.
 3. **Lavadrache**: sobald zwei Fähigkeiten voll ausgebaut sind. Feueratem über den „Atem“-Knopf.
 
-## Burg-Modus (Königreich)
+## Glutreich (Burg-Modus, Hauptmodus)
+
+Der große gelbe Knopf im Menü öffnet das Glutreich; der Survivor-Lauf startet über „Überleben“.
 
 - 3D-Ansicht (Three.js) mit Licht, Schatten und Texturen auf demselben Lava-Boden wie das Survivor-Spiel; wird erst beim Öffnen geladen.
 - Immer im Querformat: Hält man das Handy hochkant, wird die Burg um 90° gedreht angezeigt (Hinweis „Handy quer halten“), funktioniert auch mit Rotationssperre.

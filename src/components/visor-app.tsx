@@ -110,7 +110,7 @@ export function VisorApp() {
         )}
       </div>
       {mode === "menu" && panel === "castle" && (
-        <Suspense fallback={<div className="kingdom kingdom-loading">Königreich wird geladen …</div>}>
+        <Suspense fallback={<div className="kingdom kingdom-loading">Glutreich wird geladen …</div>}>
           <CastleScreen meta={meta} onMeta={commit} onClose={() => setPanel("home")} />
         </Suspense>
       )}

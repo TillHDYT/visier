@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Lock } from "lucide-react";
+import { Castle, Lock } from "lucide-react";
 import { CHAPTERS, INFO, PASSIVE_IDS, WEAPON_IDS, fmtTime } from "@/game/content";
 import { SkillIcon } from "@/game/icons";
 import {
@@ -99,12 +99,14 @@ function Home({ meta, onPanel, onMeta, onStart }: Pick<Props, "meta" | "onPanel"
           );
         })}
       </div>
-      <button type="button" className="btn btn-go" onClick={() => onStart(chapter)}>
-        Spielen
+      {/* Hauptmodus: das Glutreich (Burg). Der Survivor-Lauf startet über „Überleben“. */}
+      <button type="button" className="btn btn-go btn-hero" onClick={() => onPanel("castle")}>
+        <Castle size={30} strokeWidth={2.6} aria-hidden />
+        <span>Glutreich</span>
       </button>
       <div className="grid grid-cols-2 gap-2">
-        <button type="button" className="btn btn-pink" onClick={() => onPanel("castle")}>
-          Burg
+        <button type="button" className="btn btn-pink" onClick={() => onStart(chapter)}>
+          Überleben
         </button>
         <button type="button" className="btn btn-ink" onClick={() => onPanel("market")}>
           Shop

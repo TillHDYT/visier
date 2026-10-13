@@ -23,7 +23,7 @@ page.on("console", (m) => {
 
 await page.goto(url, { waitUntil: "networkidle" });
 await page.screenshot({ path: `${out}/0-menu.png` });
-await page.getByRole("button", { name: "Spielen" }).click();
+await page.getByRole("button", { name: "Überleben" }).click();
 await page.waitForFunction(() => window.__visier?.state().mode === "play");
 await page.evaluate(() => window.__visier.cheat("god"));
 

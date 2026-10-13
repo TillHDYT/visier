@@ -755,6 +755,20 @@
   font-size: 1.25rem;
 }
 
+/* Großer Hauptknopf im Menü (Glutreich) */
+.btn-hero {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  min-height: 4.4rem;
+  font-size: 2rem;
+}
+
+.btn-hero svg {
+  flex: none;
+}
+
 .kingdom-toast {
   position: absolute;
   z-index: 2;
