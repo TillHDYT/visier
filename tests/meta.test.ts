@@ -26,8 +26,12 @@ function memoryStorage() {
 describe("Speicherstand", () => {
   beforeEach(() => {
     vi.stubGlobal("localStorage", memoryStorage());
+    // Der Startstand enthält Zeitstempel; eine feste Uhr macht Vergleiche stabil.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(1_700_000_000_000);
   });
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 

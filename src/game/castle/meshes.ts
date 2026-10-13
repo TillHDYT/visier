@@ -1,12 +1,12 @@
 /**
  * 3D-Modelle des Königreichs, prozedural aus einfachen Körpern gebaut und je
  * Material zu einer Geometrie zusammengefasst (wenige Draw-Calls, schnell auf
- * Handys). Jede Stufe bekommt mehr Höhe, edlere Materialien und Details.
+ * Handys). Alle vier Stufen gibt es eine neue Grundform, dazwischen Zierrat.
  * Einheiten: 1 = eine Kachel; y zeigt nach oben, z entspricht der Kachel-y-Achse.
  */
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { INNER0, INNER1, ROAD_END, WORLD, type BuildingKind } from "./model";
+import { INNER0, INNER1, ROAD_END, SIZE, WORLD, tierOf, type BuildingKind } from "./model";
 import { wallTowers } from "./raid";
 import type { Mat, Materials } from "./textures";
 
@@ -452,76 +452,6 @@ function tower(k: Kit, l: number) {
   }
 }
 
-function castle(k: Kit, l: number) {
-  if (l === 1) {
-    for (let i = 0; i < 36; i++) {
-      const side = Math.floor(i / 9);
-      const t = -1.6 + (i % 9) * 0.4;
-      const [x, z] = side === 0 ? [t, -1.7] : side === 1 ? [1.7, t] : side === 2 ? [-t, 1.7] : [-1.7, -t];
-      if (side === 2 && Math.abs(t) < 0.4) continue;
-      k.cyl("trunk", 0.12, 0.13, 1.0 + (i % 3) * 0.08, 6, x, 0, z);
-    }
-    k.box("wood", 1.6, 2.0, 1.6, 0, 0, -0.2);
-    k.windows("dark", 1.6, 1.6, 1.2, 0.3, 2, 0, -0.2);
-    k.pyramid("thatch", 1.9, 1.2, 0, 2.0, -0.2);
-    k.box("woodDark", 0.4, 0.7, 0.05, 0, 0, 0.62);
-    k.flag("bannerRed", 0, 3.2, -0.2);
-    return;
-  }
-  const body: Mat = l >= 4 ? "stoneLight" : "stone";
-  const roof: Mat = l === 5 ? "roofGold" : l === 4 ? "roofBlue" : "roofRed";
-  const win: Mat = l >= 4 ? "glow" : "dark";
-  const wallH = [0, 0.9, 1.1, 1.25, 1.4][l - 1];
-  // Ringmauer mit Tor
-  k.box(body, 3.6, wallH, 0.35, 0, 0, -1.65);
-  k.box(body, 0.35, wallH, 3.6, -1.65, 0, 0);
-  k.box(body, 0.35, wallH, 3.6, 1.65, 0, 0);
-  k.box(body, 1.4, wallH, 0.35, -1.1, 0, 1.65);
-  k.box(body, 1.4, wallH, 0.35, 1.1, 0, 1.65);
-  k.box(body, 0.9, 0.35, 0.4, 0, wallH - 0.35, 1.65);
-  k.box("woodDark", 0.8, wallH - 0.35, 0.08, 0, 0, 1.7);
-  k.merlons(body, 3.6, 3.6, wallH, 0.16);
-  // Bergfried
-  const kw = [0, 1.7, 1.9, 2.1, 2.3][l - 1];
-  const kh = [0, 2.7, 3.2, 3.7, 4.2][l - 1];
-  k.box(body, kw, kh, kw, 0, 0, -0.25);
-  k.windows(win, kw, kw, kh * 0.55, 0.38, 3, 0, -0.25);
-  k.windows(win, kw, kw, kh * 0.25, 0.38, 3, 0, -0.25);
-  k.box(body, kw + 0.2, 0.25, kw + 0.2, 0, kh, -0.25);
-  k.merlons(body, kw + 0.2, kw + 0.2, kh + 0.25, 0.16, 0, -0.25);
-  k.pyramid(roof, kw - 0.1, 1.2 + l * 0.15, 0, kh + 0.25, -0.25);
-  if (l >= 4) {
-    // Seitliche Halle
-    k.box(body, 1.1, kh * 0.55, 1.3, -1.0, 0, 0.4);
-    k.gable(roof, 1.3, 0.7, 1.4, -1.0, kh * 0.55, 0.4);
-    k.windows(win, 1.1, 1.3, 0.7, 0.3, 2, -1.0, 0.4);
-    k.banner(l === 5 ? "bannerPurple" : "bannerRed", -0.4, kh - 0.1, kw / 2 - 0.25 + 0.03, 0, 1.1);
-    k.banner(l === 5 ? "bannerPurple" : "bannerRed", 0.4, kh - 0.1, kw / 2 - 0.25 + 0.03, 0, 1.1);
-  }
-  if (l >= 3) {
-    const th = wallH + 1.2 + l * 0.2;
-    for (const [x, z] of [
-      [-1.6, -1.6],
-      [1.6, -1.6],
-      [-1.6, 1.6],
-      [1.6, 1.6],
-    ] as const) {
-      k.cyl(body, 0.42, 0.46, th, 10, x, 0, z);
-      k.cyl(body, 0.52, 0.48, 0.22, 10, x, th, z);
-      k.cone(roof, 0.52, 0.9 + l * 0.1, 10, x, th + 0.22, z);
-      k.box(win, 0.14, 0.3, 0.04, x, th * 0.6, z + 0.44);
-    }
-  }
-  if (l === 5) {
-    const top = kh + 0.25 + 1.2 + l * 0.15;
-    k.cyl("stoneLight", 0.25, 0.3, 1.0, 8, 0, top - 0.4, -0.25);
-    k.cone("roofGold", 0.35, 1.3, 8, 0, top + 0.6, -0.25);
-    k.ball("glow", 0.16, 0, top + 2.0, -0.25, 1, 1);
-    k.cyl("gold", kw / 2 + 0.12, kw / 2 + 0.12, 0.08, 4, 0, kh - 0.3, -0.25);
-  }
-  k.flag(l === 5 ? "bannerPurple" : "bannerRed", 0.3, kh + 1.2 + l * 0.15, 0);
-}
-
 function field(k: Kit, l: number) {
   k.box("soil", 2.7, 0.06, 2.7, 0, 0, 0);
   const crop: Mat = l >= 3 ? "wheat" : "crop";
@@ -713,7 +643,60 @@ function goldmine(k: Kit, l: number) {
   }
 }
 
-/** Einmal gebaute Vorlagen je Art und Stufe; Gebäude sind Klone davon. */
+/** Breite des Schloss-Bildes in Kacheln; es wächst mit jeder Stufe. */
+export function castleWidth(level: number): number {
+  return 8.6 * (1 + 0.014 * (Math.max(1, Math.min(20, level)) - 1));
+}
+
+/** Ungefähre Höhe des Schloss-Bildes (die Bilder sind etwa so hoch wie breit). */
+export function castleHeight(level: number): number {
+  return castleWidth(level) * 1.08;
+}
+
+/**
+ * Zierrat der Zwischenstufen: Jede der vier Unterstufen eines Stils fügt
+ * etwas hinzu (Steinkante, Laternen, Banner mit Vorräten), damit jedes
+ * Upgrade sichtbar ist, auch wenn die Grundform gleich bleibt.
+ */
+function adorn(k: Kit, kind: BuildingKind, tier: number, sub: number) {
+  if (sub === 0) return;
+  const h = SIZE[kind] / 2 - 0.1;
+  const flame: Mat = tier >= 4 ? "crystal" : "fire";
+  const banner: Mat = tier === 5 ? "bannerPurple" : "bannerRed";
+  // Steinkante rund um den Bauplatz
+  const curb: Mat = tier >= 3 ? "stoneLight" : "stone";
+  k.box(curb, SIZE[kind] - 0.1, 0.1, 0.12, 0, 0, -h);
+  k.box(curb, SIZE[kind] - 0.1, 0.1, 0.12, 0, 0, h);
+  k.box(curb, 0.12, 0.1, SIZE[kind] - 0.1, -h, 0, 0);
+  k.box(curb, 0.12, 0.1, SIZE[kind] - 0.1, h, 0, 0);
+  if (sub >= 2) {
+    // Laternen an der linken und rechten Ecke
+    for (const [x, z] of [
+      [-h, h],
+      [h, -h],
+    ] as const) {
+      k.cyl("metal", 0.035, 0.05, 0.85, 5, x, 0.1, z);
+      k.box("metal", 0.2, 0.04, 0.2, x, 0.95, z);
+      k.box(flame, 0.13, 0.17, 0.13, x, 0.99, z);
+      k.pyramid("metal", 0.22, 0.12, x, 1.16, z);
+    }
+  }
+  if (sub >= 3) {
+    // Banner an der vorderen Ecke und ein paar Vorräte
+    k.cyl("trunk", 0.03, 0.03, 1.5, 4, h - 0.05, 0.1, h - 0.05);
+    k.box(banner, 0.04, 0.55, 0.32, h - 0.05, 1.05, h - 0.25);
+    k.ball("gold", 0.05, h - 0.05, 1.62, h - 0.05);
+    k.box("wood", 0.26, 0.24, 0.26, -h + 0.3, 0.1, h - 0.6);
+    k.cyl("woodDark", 0.12, 0.12, 0.3, 8, -h + 0.32, 0.1, h - 0.25);
+  }
+}
+
+/**
+ * Einmal gebaute Vorlagen je Art und Stufe; Gebäude sind Klone davon.
+ * Stufe 1–20: alle vier Stufen eine neue Grundform (Stil 1–5), dazwischen
+ * wächst das Gebäude und bekommt Zierrat. Das Schloss ist ein eigenes Modell
+ * (siehe castle-look.ts).
+ */
 export class Templates {
   private cache = new Map<string, THREE.Group>();
   constructor(private mats: Materials) {}
@@ -722,16 +705,22 @@ export class Templates {
     const key = `${kind}|${level}`;
     let t = this.cache.get(key);
     if (!t) {
+      const { tier, sub } = tierOf(level);
       const k = new Kit(this.mats);
-      if (kind === "house") house(k, level);
-      else if (kind === "tower") tower(k, level);
-      else if (kind === "castle") castle(k, level);
-      else if (kind === "field") field(k, level);
-      else if (kind === "farm") farm(k, level, this.mats);
-      else if (kind === "mine") mine(k, level);
-      else if (kind === "coal") coal(k, level);
-      else goldmine(k, level);
-      t = k.build();
+      if (kind === "house") house(k, tier);
+      else if (kind === "tower") tower(k, tier);
+      else if (kind === "field") field(k, tier);
+      else if (kind === "farm") farm(k, tier, this.mats);
+      else if (kind === "mine") mine(k, tier);
+      else if (kind === "coal") coal(k, tier);
+      else goldmine(k, tier);
+      const body = k.build();
+      // Jede Unterstufe etwas höher und breiter
+      body.scale.set(1 + 0.025 * sub, 1 + 0.07 * sub, 1 + 0.025 * sub);
+      const deco = new Kit(this.mats);
+      adorn(deco, kind, tier, sub);
+      t = new THREE.Group();
+      t.add(body, deco.build());
       this.cache.set(key, t);
     }
     return t;
@@ -739,17 +728,19 @@ export class Templates {
 
   /** Höhe über dem Boden für Blasen und Effekte. */
   static top(kind: BuildingKind, level: number): number {
+    const { tier, sub } = tierOf(level);
+    const grow = 1 + 0.07 * sub;
     switch (kind) {
       case "castle":
-        return 4 + level * 0.8;
+        return castleHeight(level) * 0.72;
       case "tower":
-        return 3 + level * 0.8;
+        return (3 + tier * 0.8) * grow;
       case "house":
-        return 1.6 + level * 0.4;
+        return (1.6 + tier * 0.4) * grow;
       case "field":
-        return 1;
+        return 1 + sub * 0.1;
       default:
-        return 1.8 + level * 0.25;
+        return (1.8 + tier * 0.25) * grow;
     }
   }
 }
@@ -757,13 +748,15 @@ export class Templates {
 // ---------------------------------------------------------------------------
 // Stadtmauer (fest)
 
-export function cityWall(mats: Materials, level: number): THREE.Group {
+export function cityWall(mats: Materials, wallLevel: number): THREE.Group {
   const k = new Kit(mats);
+  // Stil 1–5 bestimmt die Bauweise, die Unterstufe Höhe und Schmuck.
+  const { tier: level, sub } = tierOf(wallLevel);
   const a = INNER0 - 0.5;
   const b = INNER1 + 0.5;
   const mid = WORLD / 2;
   const gateHalf = 1.4;
-  const h = [1.5, 2.2, 2.7, 3.1, 3.5][level - 1];
+  const h = [1.5, 2.2, 2.7, 3.1, 3.5][level - 1] + sub * 0.14;
   const t = [0.5, 0.9, 1.0, 1.1, 1.2][level - 1];
 
   // Seiten als [x1, z1, x2, z2]; die Südseite hat das Tor.
@@ -804,7 +797,7 @@ export function cityWall(mats: Materials, level: number): THREE.Group {
       const cz = (z1 + z2) / 2;
       k.box("wall", w + (along ? 0.25 : 0), 0.4, d + (along ? 0 : 0.25), cx, 0, cz);
       k.box("wall", w, h, d, cx, 0, cz);
-      if (level >= 4) k.box("wallTrim", w + 0.06, 0.1, d + 0.06, cx, h - 0.35, cz);
+      if (level >= 4 || sub >= 3) k.box("wallTrim", w + 0.06, 0.1, d + 0.06, cx, h - 0.35, cz);
       // Zinnen außen und innen
       const n = Math.round((along ? d : w) / 0.55);
       for (let i = 0; i <= n; i++) {
@@ -825,6 +818,24 @@ export function cityWall(mats: Materials, level: number): THREE.Group {
 
   // Türme
   for (const tw of wallTowers()) {
+    // Außenseite des Turms (für Fackeln und Banner)
+    const ox = tw.x < mid - 1 ? -1 : tw.x > mid + 1 ? 1 : 0;
+    const oz = tw.y < mid - 1 ? -1 : tw.y > mid + 1 ? 1 : 0;
+    if (sub >= 1) {
+      const r = level === 1 ? 0.6 : 0.85;
+      k.box("fire", 0.16, 0.22, 0.16, tw.x + ox * r, h - 0.1, tw.y + oz * r);
+    }
+    if (sub >= 2 && (ox || oz)) {
+      const r = level === 1 ? 0.58 : 0.9;
+      k.banner(
+        level === 5 ? "bannerPurple" : "bannerRed",
+        tw.x + (oz ? 0 : ox * r),
+        h + 0.7,
+        tw.y + oz * r,
+        oz ? 0 : Math.PI / 2,
+        0.9,
+      );
+    }
     if (level === 1) {
       k.box("wood", 1.1, h + 1.0, 1.1, tw.x, 0, tw.y);
       k.box("wood", 1.4, 0.15, 1.4, tw.x, h + 1.0, tw.y);
@@ -876,6 +887,16 @@ export function cityWall(mats: Materials, level: number): THREE.Group {
 // ---------------------------------------------------------------------------
 // Landschaft
 
+/**
+ * Bodenflächen schreiben keine Tiefe: Das Schloss-Bild steht als Tafel in der
+ * Mitte seines Bauplatzes, sein Fuß reicht optisch bis zur vorderen Ecke und
+ * läge sonst „unter“ dem Boden. Die Reihenfolge ersetzt den Tiefentest.
+ */
+function flat(m: THREE.Mesh, order: number) {
+  (m.material as THREE.Material).depthWrite = false;
+  m.renderOrder = order;
+}
+
 export function landscape(mats: Materials): THREE.Group {
   const group = new THREE.Group();
   const size = 220;
@@ -887,6 +908,7 @@ export function landscape(mats: Materials): THREE.Group {
   ground.rotation.x = -Math.PI / 2;
   ground.position.set(WORLD / 2, -0.02, WORLD / 2);
   ground.receiveShadow = true;
+  flat(ground, -4);
   group.add(ground);
 
   const inner = INNER1 - INNER0;
@@ -898,6 +920,7 @@ export function landscape(mats: Materials): THREE.Group {
   yard.rotation.x = -Math.PI / 2;
   yard.position.set(WORLD / 2, 0, WORLD / 2);
   yard.receiveShadow = true;
+  flat(yard, -2);
   group.add(yard);
 
   // Pflasterstraße vom Tor nach innen und hinaus
@@ -908,6 +931,7 @@ export function landscape(mats: Materials): THREE.Group {
   road.rotation.x = -Math.PI / 2;
   road.position.set(WORLD / 2, 0.015, ROAD_END + roadLen / 2);
   road.receiveShadow = true;
+  flat(road, -1);
   group.add(road);
 
   // See im Osten
@@ -929,6 +953,7 @@ export function landscape(mats: Materials): THREE.Group {
   shore.rotation.x = -Math.PI / 2;
   shore.scale.set(15.2, 23.2, 1);
   shore.position.set(INNER1 + 22, 0.005, WORLD / 2 - 4);
+  flat(shore, -3);
   group.add(shore);
 
   // Berge am Horizont
@@ -1071,8 +1096,8 @@ export class Decor {
     }
   }
 
-  /** Versteckt Deko auf belegten Kacheln. */
-  update(grid: Int32Array) {
+  /** Versteckt Deko auf belegten Kacheln und im Bereich `clear` (Kacheln, inklusive). */
+  update(grid: Int32Array, clear?: { x0: number; y0: number; x1: number; y1: number }) {
     const m = new THREE.Matrix4();
     const hidden = new THREE.Matrix4().makeScale(0, 0, 0);
     const q = new THREE.Quaternion();
@@ -1082,7 +1107,10 @@ export class Decor {
       const ids = im.userData.ids as number[];
       ids.forEach((id, i) => {
         const sp = this.spots[id];
-        if (grid[sp.tile] !== 0) im.setMatrixAt(i, hidden);
+        const tx = sp.tile % WORLD;
+        const ty = Math.floor(sp.tile / WORLD);
+        const cleared = clear && tx >= clear.x0 && tx <= clear.x1 && ty >= clear.y0 && ty <= clear.y1;
+        if (grid[sp.tile] !== 0 || cleared) im.setMatrixAt(i, hidden);
         else
           im.setMatrixAt(
             i,

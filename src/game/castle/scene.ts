@@ -21,6 +21,7 @@ import {
   type Castle,
   type Resource,
 } from "./model";
+import { CastleLook, castleOpaqueAt, preloadCastleArt } from "./castle-look";
 import { Decor, Templates, cityWall, landscape, unitGeometry } from "./meshes";
 import { SEG_PER_SIDE, foesLeft, segmentCenter, startRaid, stepRaid, type Raid, type RaidEvent } from "./raid";
 import { Materials } from "./textures";
@@ -109,6 +110,7 @@ export class CastleScene {
   private fx: Fx[] = [];
   private pops = new Map<number, number>();
   private spinners: THREE.Object3D[] = [];
+  private look: CastleLook | null = null;
   private dirty = true;
   private overlayAt = 0;
   private time = 0;
@@ -172,7 +174,8 @@ export class CastleScene {
     this.selPad.visible = false;
 
     const keep = castle.buildings.find((b) => b.kind === "castle");
-    if (keep) this.target.set(keep.x + 2, 0, keep.y + 7);
+    if (keep) this.target.set(keep.x + 3, 0, keep.y + 8);
+    preloadCastleArt();
     this.sync();
 
     this.ro = new ResizeObserver(() => this.resize());
@@ -211,6 +214,7 @@ export class CastleScene {
     el.removeEventListener("pointercancel", this.onUp);
     el.removeEventListener("wheel", this.onWheel);
     el.removeEventListener("contextmenu", this.onContext);
+    this.look?.dispose();
     this.scene.traverse((o) => {
       const m = o as THREE.Mesh;
       m.geometry?.dispose?.();
@@ -383,7 +387,14 @@ export class CastleScene {
       let g = this.groups.get(b.id);
       if (!g || this.builtAs.get(b.id) !== key) {
         if (g) this.scene.remove(g);
-        g = this.templates.get(b.kind, b.level).clone();
+        if (b.kind === "castle") {
+          this.look?.dispose();
+          this.look = new CastleLook(this.mats, b.level, () => {
+            this.dirty = true;
+            this.renderer.shadowMap.needsUpdate = true;
+          });
+          g = this.look.group;
+        } else g = this.templates.get(b.kind, b.level).clone();
         g.traverse((o) => (o.userData.id = b.id));
         this.groups.set(b.id, g);
         this.builtAs.set(b.id, key);
@@ -405,7 +416,12 @@ export class CastleScene {
       changed = true;
     }
     if (changed) {
-      this.decor.update(occupancy(this.castle));
+      // Das Schloss-Bild ragt über seinen Bauplatz hinaus: davor keine Bäume.
+      const keep = this.castle.buildings.find((b) => b.kind === "castle");
+      this.decor.update(
+        occupancy(this.castle),
+        keep && { x0: keep.x - 2, y0: keep.y - 1, x1: keep.x + SIZE.castle + 1, y1: keep.y + SIZE.castle + 2 },
+      );
       this.spinners = [];
       for (const g of this.groups.values()) g.traverse((o) => o.userData.spin && this.spinners.push(o));
       this.renderer.shadowMap.needsUpdate = true;
@@ -523,6 +539,8 @@ export class CastleScene {
     if (this.wall) targets.push(this.wall);
     const hits = this.ray.intersectObjects(targets, true);
     for (const h of hits) {
+      // Durchsichtige Stellen des Schloss-Bildes lassen den Tipp durch.
+      if ((h.object as THREE.Sprite).isSprite && !castleOpaqueAt(h.object, h.uv)) continue;
       if (h.object.userData.wall) return "wall";
       if (typeof h.object.userData.id === "number") return h.object.userData.id;
     }
@@ -733,9 +751,13 @@ export class CastleScene {
         animating = true;
       }
     }
-    for (const s of this.spinners) s.rotation.z += dt * 1.2;
-    // Nur drehende Windmühlen: 30 Bilder pro Sekunde genügen und schonen den Akku.
-    const ambient = this.spinners.length > 0 && now - this.overlayAt > 33;
+    const ambient = (this.spinners.length > 0 || !!this.look?.animated) && now - this.overlayAt > 33;
+    if (ambient) {
+      // Windmühlen und Schloss-Partikel: 30 Bilder pro Sekunde genügen und schonen den Akku.
+      const step = Math.min(0.1, (now - this.overlayAt) / 1000);
+      for (const s of this.spinners) s.rotation.z += step * 1.2;
+      this.look?.tick(step);
+    }
 
     this.tickFx(dt);
     if (this.dirty || animating || ambient) {

@@ -24,22 +24,27 @@ import {
 } from "lucide-react";
 import {
   KIND_NAME,
-  LEVEL_TITLE,
   MAX_LEVEL,
   PRODUCTION,
   RES_NAME,
   STORE_HOURS,
+  TIERS,
   capacity,
   castleLevel,
+  castleRequirement,
+  castleStage,
   collect,
   costFor,
   countOf,
+  levelTitle,
   limitFor,
   pending,
+  perHour,
   place,
   placeBlock,
   rateOf,
   statsFor,
+  tierOf,
   upgrade,
   upgradeBlock,
   upgradeCost,
@@ -55,7 +60,7 @@ import {
 import { CastleScene, type PlaceView, type RaidView } from "@/game/castle/scene";
 import type { Meta } from "@/game/meta";
 
-const KIT_GOLD = 280;
+const KIT_GOLD = 400;
 
 const ICON: Record<BuildingKind, typeof House> = {
   castle: CastleIcon,
@@ -73,7 +78,8 @@ const RES_ICON: Record<Resource, typeof Coins> = { gold: Coins, food: Wheat, sto
 const BUILD_ORDER: BuildingKind[] = ["goldmine", "field", "farm", "mine", "coal", "house", "tower"];
 
 const BLURB: Record<BuildingKind, string> = {
-  castle: "Herz des Königreichs. Seine Stufe begrenzt alle anderen Gebäude.",
+  castle:
+    "Herz des Königreichs. Seine Stufe begrenzt alle anderen Gebäude; wechselt sein Aussehen ab Stufe 5, 10, 15 und 20.",
   tower: "Schießt auf Angreifer innerhalb der Mauer.",
   house: "Stellt Verteidiger, die an die Mauer eilen.",
   field: "Erntet Nahrung.",
@@ -397,7 +403,7 @@ export function CastleScreen({ meta, onMeta, onClose }: Props) {
                         </span>
                       </span>
                       <span className="block text-xs font-medium">
-                        {p ? `+${p.perHour[0]} ${RES_NAME[p.res]}/Std. · ` : ""}
+                        {p ? `+${perHour(kind, 1)} ${RES_NAME[p.res]}/Std. · ` : ""}
                         {BLURB[kind]}
                       </span>
                       <CostRow cost={costFor(kind, 1)} wallet={wallet} />
@@ -429,12 +435,19 @@ function CostRow({ cost, wallet }: { cost: Cost; wallet: Record<Resource, number
   );
 }
 
+/** Fünf Sterne für die Stile, darunter vier Punkte für die Zwischenstufen. */
 function Stars({ level }: { level: number }) {
+  const { tier, sub } = tierOf(level);
   return (
     <span className="kingdom-stars" aria-label={`Stufe ${level} von ${MAX_LEVEL}`}>
-      {Array.from({ length: MAX_LEVEL }, (_, i) => (
-        <Star key={i} size={16} strokeWidth={2.4} className={i < level ? "on" : ""} aria-hidden />
+      {Array.from({ length: TIERS }, (_, i) => (
+        <Star key={i} size={16} strokeWidth={2.4} className={i < tier ? "on" : ""} aria-hidden />
       ))}
+      <span className="kingdom-pips" aria-hidden>
+        {Array.from({ length: 4 }, (_, i) => (
+          <i key={i} className={i <= sub ? "on" : ""} />
+        ))}
+      </span>
       <span className="text-xs font-bold">
         Stufe {level}/{MAX_LEVEL}
       </span>
@@ -444,8 +457,10 @@ function Stars({ level }: { level: number }) {
 
 function statLine(kind: BuildingKind, level: number, boosters: number): string {
   const p = PRODUCTION[kind];
-  if (p)
-    return `${p.perHour[level - 1]} ${RES_NAME[p.res]} pro Stunde · Speicher ${p.perHour[level - 1] * STORE_HOURS}`;
+  if (p) {
+    const rate = perHour(kind, level);
+    return `${fmt(rate)} ${RES_NAME[p.res]} pro Stunde · Speicher ${fmt(rate * STORE_HOURS)}`;
+  }
   const s = statsFor(kind, level, boosters);
   const parts = [`${s.hp} Leben`];
   if (s.dmg) parts.push(`${s.dmg} Schaden`);
@@ -453,6 +468,38 @@ function statLine(kind: BuildingKind, level: number, boosters: number): string {
   if (s.defenders) parts.push(`${s.defenders} Verteidiger`);
   if (kind === "castle") parts.push(`erlaubt Stufe ${level}`);
   return parts.join(" · ");
+}
+
+/** Was das Schloss für die nächste Stufe braucht und wann es sein Aussehen wechselt. */
+function CastleGoal({ castle }: { castle: Castle }) {
+  const req = castleRequirement(castle);
+  const { stage, next } = castleStage(req.target - 1);
+  const coming = castleStage(req.target).stage;
+  return (
+    <div className="kingdom-goal">
+      <p className="text-xs font-bold">
+        {coming.key !== stage.key
+          ? `Mit Stufe ${req.target} wird es zum ${coming.name}!`
+          : next
+            ? `${next.name} ab Stufe ${next.from} – jede Stufe färbt das Schloss mehr in den neuen Stil.`
+            : ""}
+      </p>
+      <ul>
+        <li className={req.wallOk ? "ok" : ""}>
+          {req.wallOk ? <Check size={14} strokeWidth={3} aria-hidden /> : <X size={14} strokeWidth={3} aria-hidden />}
+          Stadtmauer Stufe {req.min} ({castle.wall})
+        </li>
+        <li className={req.ready >= req.needed ? "ok" : ""}>
+          {req.ready >= req.needed ? (
+            <Check size={14} strokeWidth={3} aria-hidden />
+          ) : (
+            <X size={14} strokeWidth={3} aria-hidden />
+          )}
+          {Math.min(req.ready, req.needed)}/{req.needed} Gebäude auf Stufe {req.min}
+        </li>
+      </ul>
+    </div>
+  );
 }
 
 type PanelProps = {
@@ -480,7 +527,7 @@ function BuildingPanel({ castle, building: b, coins, now, onUpgrade, onHarvest, 
         </span>
         <div className="min-w-0 flex-1">
           <p className="font-display text-xl leading-none">
-            {KIND_NAME[b.kind]} · {LEVEL_TITLE[b.kind][b.level - 1]}
+            {KIND_NAME[b.kind]} · {levelTitle(b.kind, b.level)}
           </p>
           <Stars level={b.level} />
         </div>
@@ -501,9 +548,10 @@ function BuildingPanel({ castle, building: b, coins, now, onUpgrade, onHarvest, 
       )}
       {cost && (
         <p className="text-xs font-bold text-pink">
-          Stufe {b.level + 1} „{LEVEL_TITLE[b.kind][b.level]}“: {statLine(b.kind, b.level + 1, castle.boosters)}
+          Stufe {b.level + 1} „{levelTitle(b.kind, b.level + 1)}“: {statLine(b.kind, b.level + 1, castle.boosters)}
         </p>
       )}
+      {cost && b.kind === "castle" && <CastleGoal castle={castle} />}
       {cost && <CostRow cost={cost} wallet={wallet} />}
       <button type="button" className="btn btn-go kingdom-upgrade" disabled={!!block} onClick={onUpgrade}>
         {cost ? (
@@ -542,7 +590,7 @@ function WallPanel({
           <Shield size={26} strokeWidth={2.4} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="font-display text-xl leading-none">Stadtmauer · {LEVEL_TITLE.wall[l - 1]}</p>
+          <p className="font-display text-xl leading-none">Stadtmauer · {levelTitle("wall", l)}</p>
           <Stars level={l} />
         </div>
         <button type="button" className="icon-btn" aria-label="Schließen" onClick={onClose}>
@@ -554,7 +602,7 @@ function WallPanel({
       </p>
       {next && (
         <p className="text-xs font-bold text-pink">
-          Stufe {l + 1} „{LEVEL_TITLE.wall[l]}“: {next.hp} Leben · {next.dmg} Schaden
+          Stufe {l + 1} „{levelTitle("wall", l + 1)}“: {next.hp} Leben · {next.dmg} Schaden
         </p>
       )}
       {next && <CostRow cost={costFor("wall", l + 1)} wallet={walletOf(castle, coins)} />}

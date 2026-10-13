@@ -5,6 +5,8 @@ import {
   MAX_LEVEL,
   STORE_HOURS,
   castleLevel,
+  castleRequirement,
+  castleStage,
   collect,
   costFor,
   defaultCastle,
@@ -17,6 +19,7 @@ import {
   readCastle,
   roadTiles,
   statsFor,
+  tierOf,
   upgrade,
   upgradeBlock,
   upgradeWall,
@@ -130,13 +133,43 @@ describe("Königreich: Upgrades", () => {
     expect(upgradeWall(c, RICH)!.castle.wall).toBe(2);
   });
 
-  it("alles geht bis Stufe 5, Kosten steigen", () => {
+  it("das Schloss braucht Mauer und die meisten Gebäude eine Stufe darunter", () => {
+    let c = rich(defaultCastle(0));
+    const raise = (id: number, to: number) => {
+      while (c.buildings.find((b) => b.id === id)!.level < to) c = upgrade(c, id, RICH)!.castle;
+    };
+    for (let target = 2; target <= 4; target++) {
+      while (c.wall < target - 1) c = upgradeWall(c, RICH)!.castle;
+      for (const b of c.buildings) if (b.kind !== "castle") raise(b.id, target - 1);
+      c = upgrade(c, keepOf(c).id, RICH)!.castle;
+    }
+    expect(castleLevel(c)).toBe(4);
+    // Stufe 5 erst, wenn Mauer und ¾ der Gebäude Stufe 4 haben
+    expect(upgradeBlock(c, keepOf(c), RICH)).toMatch(/Stadtmauer Stufe 4/);
+    c = upgradeWall(c, RICH)!.castle;
+    expect(upgradeBlock(c, keepOf(c), RICH)).toMatch(/3 weitere Gebäude auf Stufe 4/);
+    const others = c.buildings.filter((b) => b.kind !== "castle");
+    for (const b of others.slice(0, 2)) raise(b.id, 4);
+    expect(castleRequirement(c)).toMatchObject({ target: 5, min: 4, ready: 2, needed: 3, ok: false });
+    raise(others[2].id, 4);
+    expect(castleRequirement(c).ok).toBe(true);
+    expect(castleLevel(upgrade(c, keepOf(c).id, RICH)!.castle)).toBe(5);
+  });
+
+  it("alles geht bis Stufe 20, Kosten steigen", () => {
     let c = rich(defaultCastle(0));
     let coins = RICH;
-    for (let l = 1; l < MAX_LEVEL; l++) ({ castle: c, coins } = upgrade(c, keepOf(c).id, coins)!);
+    for (let target = 2; target <= MAX_LEVEL; target++) {
+      while (c.wall < target - 1) ({ castle: c, coins } = upgradeWall(c, coins)!);
+      for (const b of c.buildings)
+        if (b.kind !== "castle")
+          while (c.buildings.find((it) => it.id === b.id)!.level < target - 1)
+            ({ castle: c, coins } = upgrade(c, b.id, coins)!);
+      ({ castle: c, coins } = upgrade(c, keepOf(c).id, coins)!);
+    }
     for (const b of c.buildings)
       for (let l = b.level; l < MAX_LEVEL; l++) ({ castle: c, coins } = upgrade(c, b.id, coins)!);
-    for (let l = 1; l < MAX_LEVEL; l++) ({ castle: c, coins } = upgradeWall(c, coins)!);
+    ({ castle: c, coins } = upgradeWall(c, coins)!);
     expect(c.buildings.every((b) => b.level === MAX_LEVEL)).toBe(true);
     expect(c.wall).toBe(MAX_LEVEL);
     for (let l = 1; l < MAX_LEVEL; l++)
@@ -173,9 +206,10 @@ describe("Königreich: Speicherstand", () => {
       raid: 4,
     };
     const c = readCastle(old, 0);
-    expect(castleLevel(c)).toBe(3);
-    expect(c.wall).toBe(3);
-    expect(c.buildings.some((b) => b.kind === "tower" && b.level === 2)).toBe(true);
+    // alte Stufe 1–5 → gleicher Stil in 1–20
+    expect(castleLevel(c)).toBe(9);
+    expect(c.wall).toBe(9);
+    expect(c.buildings.some((b) => b.kind === "tower" && b.level === 5)).toBe(true);
     expect(c.buildings.some((b) => b.kind === "goldmine")).toBe(true);
     expect(c.skin).toBe("gold");
     expect(c.raid).toBe(4);
@@ -183,8 +217,40 @@ describe("Königreich: Speicherstand", () => {
 
   it("übernimmt das alte 16×16-Raster", () => {
     const c = readCastle({ grid: "4".padEnd(256, "."), cx: 6, cy: 6, keep: 2 }, 0);
-    expect(castleLevel(c)).toBe(2);
+    expect(castleLevel(c)).toBe(5);
     expect(c.buildings.some((b) => b.kind === "tower")).toBe(true);
+  });
+});
+
+describe("Königreich: 20 Stufen", () => {
+  it("das Schloss wechselt ab 5, 10, 15 und 20 sein Aussehen", () => {
+    const keys = Array.from({ length: MAX_LEVEL }, (_, i) => castleStage(i + 1).stage.key);
+    expect(keys.slice(0, 4).every((k) => k === "normal")).toBe(true);
+    expect(keys[4]).toBe("poison");
+    expect(keys[9]).toBe("ice");
+    expect(keys[14]).toBe("fire");
+    expect(keys[19]).toBe("mordor");
+    // dazwischen wächst der Übergang zum nächsten Stil mit jeder Stufe
+    for (let l = 1; l < 19; l++) {
+      const a = castleStage(l);
+      const b = castleStage(l + 1);
+      if (a.stage.key === b.stage.key) expect(b.progress).toBeGreaterThan(a.progress);
+    }
+  });
+
+  it("Gebäude: alle vier Stufen ein neuer Stil, dazwischen Zwischenstufen", () => {
+    expect(tierOf(1)).toEqual({ tier: 1, sub: 0 });
+    expect(tierOf(4)).toEqual({ tier: 1, sub: 3 });
+    expect(tierOf(5)).toEqual({ tier: 2, sub: 0 });
+    expect(tierOf(20)).toEqual({ tier: 5, sub: 3 });
+  });
+
+  it("übernimmt den Stand mit 5 Stufen (v3)", () => {
+    const old = { ...defaultCastle(0), v: 3, wall: 2, buildings: [{ id: 1, kind: "castle", x: 21, y: 16, level: 3 }] };
+    const c = readCastle(old, 0);
+    expect(c.v).toBe(4);
+    expect(castleLevel(c)).toBe(9);
+    expect(c.wall).toBe(5);
   });
 });
 

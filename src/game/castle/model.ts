@@ -1,5 +1,5 @@
 /**
- * Datenmodell des Königreichs: feste Stadtmauer, Gebäude mit Stufe 1–5,
+ * Datenmodell des Königreichs: feste Stadtmauer, Gebäude mit Stufe 1–20,
  * Rohstoffe und passive Produktion. Reine Funktionen ohne DOM.
  */
 
@@ -21,10 +21,10 @@ export type Building = {
 export type Stock = { food: number; stone: number; coal: number };
 
 export type Castle = {
-  v: 3;
+  v: 4;
   buildings: Building[];
   nextId: number;
-  /** Stufe der festen Stadtmauer (1–5). */
+  /** Stufe der festen Stadtmauer (1–20). */
   wall: number;
   res: Stock;
   skin: WallSkin;
@@ -40,7 +40,9 @@ export type Cost = Partial<Record<Resource, number>>;
 export const WORLD = 48;
 export const INNER0 = 6;
 export const INNER1 = 42;
-export const MAX_LEVEL = 5;
+export const MAX_LEVEL = 20;
+/** Alle 4 Stufen ein neues Aussehen (5 Stufen-Stile). */
+export const TIERS = 5;
 export const SKIN_IDS: WallSkin[] = ["ice", "fire", "lava", "gold"];
 export const KINDS: BuildingKind[] = ["castle", "tower", "house", "field", "farm", "mine", "coal", "goldmine"];
 /** Speicher der Produktionsgebäude in Stunden. */
@@ -60,7 +62,7 @@ export const KIND_NAME: Record<BuildingKind, string> = {
 export const RES_NAME: Record<Resource, string> = { gold: "Gold", food: "Nahrung", stone: "Stein", coal: "Kohle" };
 
 export const SIZE: Record<BuildingKind, number> = {
-  castle: 4,
+  castle: 6,
   tower: 2,
   house: 2,
   field: 3,
@@ -70,8 +72,7 @@ export const SIZE: Record<BuildingKind, number> = {
   goldmine: 3,
 };
 
-export const LEVEL_TITLE: Record<BuildingKind | "wall", string[]> = {
-  castle: ["Holzfeste", "Steinburg", "Wehrburg", "Königsburg", "Goldene Zitadelle"],
+const TIER_TITLE: Record<Exclude<BuildingKind, "castle"> | "wall", string[]> = {
   wall: ["Palisade", "Steinmauer", "Wehrmauer", "Festungsmauer", "Königsmauer"],
   tower: ["Holzturm", "Steinturm", "Bogenturm", "Kristallturm", "Sonnenturm"],
   house: ["Hütte", "Kate", "Fachwerkhaus", "Gutshaus", "Halle"],
@@ -82,14 +83,53 @@ export const LEVEL_TITLE: Record<BuildingKind | "wall", string[]> = {
   goldmine: ["Schürfstelle", "Stollen", "Förderturm", "Goldwerk", "Goldene Mine"],
 };
 
-/** Was ein Gebäude pro Stunde erzeugt (Stufe 1–5). */
-export const PRODUCTION: Partial<Record<BuildingKind, { res: Resource; perHour: number[] }>> = {
-  field: { res: "food", perHour: [60, 100, 150, 210, 280] },
-  farm: { res: "food", perHour: [120, 200, 300, 420, 560] },
-  mine: { res: "stone", perHour: [80, 130, 190, 260, 340] },
-  coal: { res: "coal", perHour: [50, 85, 125, 170, 220] },
-  goldmine: { res: "gold", perHour: [40, 70, 110, 160, 220] },
+/** Die fünf Schloss-Stile; ab Stufe 1, 5, 10, 15 und 20. */
+export const CASTLE_STAGES = [
+  { from: 1, key: "normal", name: "Königsburg" },
+  { from: 5, key: "poison", name: "Gift-Schloss" },
+  { from: 10, key: "ice", name: "Eis-Schloss" },
+  { from: 15, key: "fire", name: "Feuer-Schloss" },
+  { from: 20, key: "mordor", name: "Mordor-Festung" },
+] as const;
+
+export type CastleStage = (typeof CASTLE_STAGES)[number];
+
+/** Aktueller Schloss-Stil, der nächste und der Fortschritt dazwischen (0–1). */
+export function castleStage(level: number): { stage: CastleStage; next: CastleStage | null; progress: number } {
+  let i = 0;
+  while (i + 1 < CASTLE_STAGES.length && level >= CASTLE_STAGES[i + 1].from) i++;
+  const stage = CASTLE_STAGES[i];
+  const next = CASTLE_STAGES[i + 1] ?? null;
+  const progress = next ? (level - stage.from) / (next.from - stage.from) : 1;
+  return { stage, next, progress };
+}
+
+/** Stil-Stufe 1–5 eines Gebäudes; innerhalb eines Stils zählt die Unterstufe 0–3. */
+export function tierOf(level: number): { tier: number; sub: number } {
+  const l = Math.max(1, Math.min(MAX_LEVEL, level));
+  return { tier: Math.ceil(l / 4), sub: (l - 1) % 4 };
+}
+
+export function levelTitle(kind: BuildingKind | "wall", level: number): string {
+  if (kind === "castle") return castleStage(level).stage.name;
+  return TIER_TITLE[kind][tierOf(level).tier - 1];
+}
+
+const GROW = 1.18;
+
+/** Was ein Gebäude pro Stunde erzeugt; +18 % je Stufe. */
+export const PRODUCTION: Partial<Record<BuildingKind, { res: Resource; base: number }>> = {
+  field: { res: "food", base: 60 },
+  farm: { res: "food", base: 120 },
+  mine: { res: "stone", base: 80 },
+  coal: { res: "coal", base: 50 },
+  goldmine: { res: "gold", base: 40 },
 };
+
+export function perHour(kind: BuildingKind, level: number): number {
+  const p = PRODUCTION[kind];
+  return p ? Math.round(p.base * Math.pow(GROW, Math.max(1, level) - 1)) : 0;
+}
 
 /** Anzahl je Art abhängig von der Schloss-Stufe. */
 export function limitFor(kind: BuildingKind, castleLevel: number): number {
@@ -98,18 +138,18 @@ export function limitFor(kind: BuildingKind, castleLevel: number): number {
     case "castle":
       return 1;
     case "tower":
-      return l;
+      return 1 + Math.floor(l / 2);
     case "house":
-      return l + 1;
+      return 2 + Math.floor(l / 3);
     case "field":
-      return l + 2;
+      return 3 + Math.floor(l / 2);
     case "farm":
     case "mine":
-      return 1 + Math.floor(l / 2);
+      return 1 + Math.floor(l / 4);
     case "coal":
-      return Math.floor((l + 1) / 2);
+      return Math.floor((l + 3) / 4);
     case "goldmine":
-      return 1 + Math.floor((l - 1) / 2);
+      return 1 + Math.floor(l / 5);
   }
 }
 
@@ -124,16 +164,23 @@ const BASE: Record<BuildingKind | "wall", Required<Cost>> = {
   coal: { gold: 60, food: 120, stone: 60, coal: 0 },
   goldmine: { gold: 100, food: 150, stone: 100, coal: 50 },
 };
-const MULT = [1, 2, 4, 8, 15];
+/** Preissteigerung je Stufe (Stufe 20 ≈ 230-fach des Baupreises). */
+const PRICE = 1.32;
+
+function round(n: number) {
+  const mag = Math.pow(10, Math.max(0, Math.floor(Math.log10(n)) - 1));
+  return Math.round(n / mag) * mag;
+}
 
 /** Preis für Stufe `level` (1 = Bau). Ab Stufe 2 Stein, ab Stufe 4 Kohle. */
 export function costFor(kind: BuildingKind | "wall", level: number): Cost {
   const b = BASE[kind];
-  const m = MULT[Math.max(1, Math.min(MAX_LEVEL, level)) - 1];
-  const c: Cost = { gold: b.gold * m };
-  if (b.food) c.food = b.food * m;
-  if (level >= 2 && b.stone) c.stone = b.stone * m;
-  if (level >= 4 && b.coal) c.coal = b.coal * m;
+  const l = Math.max(1, Math.min(MAX_LEVEL, level));
+  const m = Math.pow(PRICE, l - 1) * (l >= 2 ? 1.2 : 1);
+  const c: Cost = { gold: round(b.gold * m) };
+  if (b.food) c.food = round(b.food * m);
+  if (l >= 2 && b.stone) c.stone = round(b.stone * m);
+  if (l >= 4 && b.coal) c.coal = round(b.coal * m);
   return c;
 }
 
@@ -168,20 +215,20 @@ export function statsFor(kind: BuildingKind | "wall", level: number, boosters = 
   const l = Math.max(1, Math.min(MAX_LEVEL, level));
   switch (kind) {
     case "wall":
-      return { hp: [900, 1400, 2100, 3000, 4500][l - 1], dmg: 8 + 4 * l, range: 7, rate: 0.9 };
+      return { hp: Math.round(900 * Math.pow(1.13, l - 1)), dmg: 8 + 2 * l, range: 7, rate: 0.9 + 0.02 * l };
     case "tower":
       return {
-        hp: 150 * l,
-        dmg: Math.round((8 + 7 * l) * (1 + 0.1 * boosters)),
-        range: 6 + 0.5 * l,
-        rate: [1, 1.15, 1.3, 1.5, 1.8][l - 1],
+        hp: 150 + 60 * l,
+        dmg: Math.round((8 + 3.5 * l) * (1 + 0.1 * boosters)),
+        range: 6 + 0.15 * l,
+        rate: Math.round((1 + 0.04 * l) * 100) / 100,
       };
     case "castle":
-      return { hp: 600 * l, dmg: 10 * l, range: 7, rate: 0.9 };
+      return { hp: 600 + 300 * l, dmg: 10 + 3 * l, range: 7 + 0.1 * l, rate: 0.9 };
     case "house":
-      return { hp: 100 * l, defenders: l };
+      return { hp: 100 + 40 * l, defenders: 1 + Math.floor(l / 4) };
     default:
-      return { hp: 120 * l };
+      return { hp: 100 + 30 * l };
   }
 }
 
@@ -199,8 +246,7 @@ export function countOf(c: Castle, kind: BuildingKind): number {
 // Produktion
 
 export function rateOf(b: Building): number {
-  const p = PRODUCTION[b.kind];
-  return p ? p.perHour[b.level - 1] : 0;
+  return perHour(b.kind, b.level);
 }
 
 /** Bereit liegende Menge (gekappt auf STORE_HOURS). */
@@ -329,10 +375,36 @@ export function upgradeCost(b: Building): Cost | null {
   return b.level >= MAX_LEVEL ? null : costFor(b.kind, b.level + 1);
 }
 
+/**
+ * Voraussetzung fürs Schloss (Prinzip wie Clash of Clans): Für Stufe N müssen
+ * die Stadtmauer und mindestens drei Viertel der übrigen Gebäude Stufe N−1 haben.
+ */
+export function castleRequirement(c: Castle) {
+  const target = castleLevel(c) + 1;
+  const min = target - 1;
+  const others = c.buildings.filter((b) => b.kind !== "castle");
+  const ready = others.filter((b) => b.level >= min).length;
+  const needed = Math.max(1, Math.ceil(others.length * 0.75));
+  return {
+    target,
+    min,
+    ready,
+    needed,
+    total: others.length,
+    wallOk: c.wall >= min,
+    ok: c.wall >= min && ready >= needed,
+  };
+}
+
 export function upgradeBlock(c: Castle, b: Building, coins: number): string | null {
   const cost = upgradeCost(b);
   if (!cost) return "Maximale Stufe";
   if (b.kind !== "castle" && b.level >= castleLevel(c)) return `Schloss Stufe ${b.level + 1} nötig`;
+  if (b.kind === "castle") {
+    const req = castleRequirement(c);
+    if (!req.wallOk) return `Stadtmauer Stufe ${req.min} nötig`;
+    if (req.ready < req.needed) return `${req.needed - req.ready} weitere Gebäude auf Stufe ${req.min} nötig`;
+  }
   const need = missing(cost, walletOf(c, coins));
   if (need) return `Zu wenig ${RES_NAME[need]}`;
   return null;
@@ -379,9 +451,9 @@ const MID = WORLD / 2;
 
 export function defaultCastle(now = Date.now()): Castle {
   return {
-    v: 3,
+    v: 4,
     buildings: [
-      { id: 1, kind: "castle", x: MID - 2, y: MID - 6, level: 1 },
+      { id: 1, kind: "castle", x: MID - 3, y: ROAD_END - 6, level: 1 },
       { id: 2, kind: "goldmine", x: MID + 5, y: MID - 9, level: 1, t: now },
       { id: 3, kind: "field", x: MID - 9, y: MID - 4, level: 1, t: now },
       { id: 4, kind: "house", x: MID + 4, y: MID - 2, level: 1 },
@@ -427,18 +499,20 @@ export function readCastle(raw: unknown, now = Date.now()): Castle {
   let seeds: Seed[] = [];
   let wall = 1;
   let res = base.res;
-  if (r.v === 3 && Array.isArray(r.buildings)) {
+  if ((r.v === 3 || r.v === 4) && Array.isArray(r.buildings)) {
+    // v3 kannte nur Stufe 1–5; jede alte Stufe entspricht dem gleichen Stil in v4.
+    const lift = (l: number) => (r.v === 3 ? 1 + (l - 1) * 4 : l);
     for (const it of r.buildings as Record<string, unknown>[]) {
       if (!it || !KINDS.includes(it.kind as BuildingKind)) continue;
       seeds.push({
         kind: it.kind as BuildingKind,
         x: int(it.x, 0, WORLD - 1, 0),
         y: int(it.y, 0, WORLD - 1, 0),
-        level: int(it.level, 1, MAX_LEVEL, 1),
+        level: lift(int(it.level, 1, MAX_LEVEL, 1)),
         t: typeof it.t === "number" && Number.isFinite(it.t) ? Math.min(now, it.t) : undefined,
       });
     }
-    wall = int(r.wall, 1, MAX_LEVEL, 1);
+    wall = lift(int(r.wall, 1, MAX_LEVEL, 1));
     const s = (r.res ?? {}) as Record<string, unknown>;
     res = { food: int(s.food, 0, 1e9, 0), stone: int(s.stone, 0, 1e9, 0), coal: int(s.coal, 0, 1e9, 0) };
   } else {
@@ -482,7 +556,7 @@ function legacyV2(list: unknown[]): Legacy[] {
       kind: it.kind as Legacy["kind"],
       x: int(it.x, 0, 39, 0) + 4,
       y: int(it.y, 0, 39, 0) + 4,
-      level: int(it.level, 1, MAX_LEVEL, 1),
+      level: 1 + (int(it.level, 1, 5, 1) - 1) * 4,
     });
   }
   return out;
@@ -493,7 +567,12 @@ function legacyGrid(r: Record<string, unknown>): Legacy[] {
   const OLD = 16;
   const off = MID - 8;
   const out: Legacy[] = [
-    { kind: "castle", x: int(r.cx, 0, 13, 6) + off, y: int(r.cy, 0, 13, 6) + off, level: int(r.keep, 1, MAX_LEVEL, 1) },
+    {
+      kind: "castle",
+      x: int(r.cx, 0, 13, 6) + off,
+      y: int(r.cy, 0, 13, 6) + off,
+      level: 1 + (int(r.keep, 1, 5, 1) - 1) * 4,
+    },
   ];
   if (grid.length !== OLD * OLD) return out;
   for (let i = 0; i < grid.length; i++) {
@@ -501,7 +580,8 @@ function legacyGrid(r: Record<string, unknown>): Legacy[] {
     if (ch < "1" || ch > "9") continue;
     const n = Number(ch);
     const kind = n <= 3 ? "wall" : n <= 6 ? "tower" : "house";
-    out.push({ kind, x: (i % OLD) + off, y: Math.floor(i / OLD) + off, level: n <= 3 ? n : n <= 6 ? n - 3 : n - 6 });
+    const old = n <= 3 ? n : n <= 6 ? n - 3 : n - 6;
+    out.push({ kind, x: (i % OLD) + off, y: Math.floor(i / OLD) + off, level: 1 + (old - 1) * 4 });
   }
   return out;
 }

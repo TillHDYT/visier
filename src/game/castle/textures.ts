@@ -133,6 +133,7 @@ export type Mat =
   | "glow"
   | "crystal"
   | "fire"
+  | "poison"
   | "leaf"
   | "trunk"
   | "wall"
@@ -211,6 +212,7 @@ export class Materials {
     lambert("glow", { color: "#ffd75a", emissive: new THREE.Color("#ffb020"), emissiveIntensity: 0.9 });
     lambert("crystal", { color: "#8fe0ff", emissive: new THREE.Color("#2fa8ff"), emissiveIntensity: 0.9 });
     lambert("fire", { color: "#ff8a2a", emissive: new THREE.Color("#ff5a10"), emissiveIntensity: 1 });
+    lambert("poison", { color: "#9cff5a", emissive: new THREE.Color("#3cff20"), emissiveIntensity: 1 });
     lambert("leaf", { color: "#4e8f3a" });
     lambert("trunk", { color: "#6b4a2c" });
     lambert("dark", { color: "#1c1612" });
