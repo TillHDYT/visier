@@ -1,4 +1,7 @@
 import { ART } from "@/game/assets";
+import { defaultCastle, readCastle, type Castle, type WallSkin } from "@/game/castle/model";
+
+export type { Castle, WallSkin };
 
 export type Slot = "helm" | "scarf" | "boots";
 export type Rarity = 0 | 1 | 2 | 3;
@@ -7,21 +10,6 @@ export type GearItem = {
   slot: Slot;
   rarity: Rarity;
   value: number;
-};
-
-export type WallSkin = "ice" | "fire" | "lava" | "gold";
-
-export type Castle = {
-  wall: number;
-  tower: number;
-  keep: number;
-  skin: WallSkin;
-  owned: WallSkin[];
-  boosters: number;
-  grid: string;
-  cx: number;
-  cy: number;
-  kit: boolean;
 };
 
 export type Meta = {
@@ -53,7 +41,6 @@ export const SLOT_NAME: Record<Slot, string> = {
 
 const RANK_MAX = { hp: 10, dmg: 10, spd: 10, mag: 8, start: 2 };
 
-export const BUILD_MAX = 8;
 export const WARRIOR_CAP = 12;
 export const BOOSTER_CAP = 5;
 export const BOOSTER_COST = 60;
@@ -65,112 +52,10 @@ export const SKIN_INFO: { id: WallSkin; name: string; cost: number; src: string 
   { id: "gold", name: "Goldmauer", cost: 320, src: ART.wallGold },
 ];
 
-const SKIN_IDS: WallSkin[] = ["ice", "fire", "lava", "gold"];
-
-export const GRID_W = 16;
-export const GRID_H = 16;
-export const CASTLE_C = 6;
-export const CASTLE_R = 6;
-export const CASTLE_S = 3;
-export const PIECE_MAX = 3;
-
-export const keepAt = { c: CASTLE_C, r: CASTLE_R };
-
-export function castleCell(c: number, r: number) {
-  return c >= keepAt.c && c < keepAt.c + CASTLE_S && r >= keepAt.r && r < keepAt.r + CASTLE_S;
-}
-
-export function emptyGrid() {
-  return ".".repeat(GRID_W * GRID_H);
-}
-
-export type Plot = { kind: "wall" | "tower" | "house"; level: number };
-
-const PLACE_CH: Record<Plot["kind"], string> = { wall: "123", tower: "456", house: "789" };
-
-export function readPlots(grid: string): (Plot | null)[] {
-  const src = grid.length === GRID_W * GRID_H ? grid : emptyGrid();
-  const out: (Plot | null)[] = [];
-  for (let i = 0; i < GRID_W * GRID_H; i++) {
-    const ch = src[i] ?? ".";
-    if (ch >= "1" && ch <= "3") out.push({ kind: "wall", level: Number(ch) });
-    else if (ch >= "4" && ch <= "6") out.push({ kind: "tower", level: Number(ch) - 3 });
-    else if (ch >= "7" && ch <= "9") out.push({ kind: "house", level: Number(ch) - 6 });
-    else out.push(null);
-  }
-  return out;
-}
-
-export function writePlots(plots: (Plot | null)[]) {
-  let s = "";
-  for (let i = 0; i < GRID_W * GRID_H; i++) {
-    const p = plots[i];
-    if (!p) s += ".";
-    else s += PLACE_CH[p.kind][p.level - 1] ?? ".";
-  }
-  return s;
-}
-
-export const PLACE_COST = { wall: 8, tower: 48, house: 32 } as const;
-
-export function pieceUpgradeCost(kind: Plot["kind"], level: number) {
-  if (kind === "wall") return 12 + level * 10;
-  if (kind === "tower") return 30 + level * 22;
-  return 22 + level * 16;
-}
-
-export function defaultCastle(): Castle {
-  return {
-    wall: 1,
-    tower: 0,
-    keep: 1,
-    skin: "ice",
-    owned: ["ice"],
-    boosters: 0,
-    grid: emptyGrid(),
-    cx: CASTLE_C,
-    cy: CASTLE_R,
-    kit: false,
-  };
-}
-
-export function wallCost(level: number) {
-  return 35 + level * 28;
-}
-export function towerCost(level: number) {
-  return 45 + level * 32;
-}
-export function keepCost(level: number) {
-  return 55 + level * 36;
-}
-
+/** Krieger aus einem Survivor-Lauf; sie verteidigen später das Schloss. */
 export function recruitsFromRun(have: number, kills: number) {
   const gain = Math.min(2, Math.floor(kills / 30));
   return Math.min(gain, Math.max(0, WARRIOR_CAP - have));
-}
-
-function readCastle(raw: unknown): Castle {
-  const base = defaultCastle();
-  if (!raw || typeof raw !== "object") return base;
-  const c = raw as Partial<Castle>;
-  const owned = Array.isArray(c.owned)
-    ? c.owned.filter((id): id is WallSkin => SKIN_IDS.includes(id as WallSkin))
-    : base.owned;
-  if (!owned.includes("ice")) owned.unshift("ice");
-  const skin =
-    SKIN_IDS.includes(c.skin as WallSkin) && owned.includes(c.skin as WallSkin) ? (c.skin as WallSkin) : "ice";
-  return {
-    wall: clampInt(c.wall, BUILD_MAX) || 1,
-    tower: clampInt(c.tower, BUILD_MAX),
-    keep: clampInt(c.keep, BUILD_MAX) || 1,
-    skin,
-    owned,
-    boosters: clampInt(c.boosters, BOOSTER_CAP),
-    grid: typeof c.grid === "string" && c.grid.length === GRID_W * GRID_H ? c.grid : emptyGrid(),
-    cx: clampKeep(c.cx),
-    cy: clampKeep(c.cy),
-    kit: c.kit === true,
-  };
 }
 
 const GEAR_TABLE: Record<Slot, number[]> = {
@@ -197,12 +82,6 @@ export function defaultMeta(): Meta {
     warriors: 0,
     castle: defaultCastle(),
   };
-}
-
-function clampKeep(n: unknown) {
-  const max = GRID_W - CASTLE_S;
-  if (typeof n !== "number" || !Number.isFinite(n)) return CASTLE_C;
-  return Math.min(max, Math.max(0, Math.floor(n)));
 }
 
 function clampInt(n: unknown, max: number): number {
@@ -320,18 +199,6 @@ export function buyBooster(m: Meta): Meta | null {
     ...m,
     coins: m.coins - BOOSTER_COST,
     castle: { ...m.castle, boosters: m.castle.boosters + 1 },
-  };
-}
-
-export function buyBuild(m: Meta, part: "wall" | "tower" | "keep"): Meta | null {
-  const level = m.castle[part];
-  if (level >= BUILD_MAX) return null;
-  const cost = part === "wall" ? wallCost(level) : part === "tower" ? towerCost(level) : keepCost(level);
-  if (m.coins < cost) return null;
-  return {
-    ...m,
-    coins: m.coins - cost,
-    castle: { ...m.castle, [part]: level + 1 },
   };
 }
 

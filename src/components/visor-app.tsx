@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CastleView } from "@/game/castle";
 import { mountGame, type Card, type GameHandle, type Hud as HudData, type Mode, type Summary } from "@/game/engine";
 import { defaultMeta, loadMeta, saveMeta, type Meta } from "@/game/meta";
+import { CastleScreen } from "./castle-screen";
 import { Hud } from "./hud";
 import { MenuScreen, type Panel } from "./menu";
 import { ArmorSheet, DeathScreen, LevelSheet, LuckySheet, PauseSheet } from "./run-overlays";
@@ -71,7 +71,7 @@ export function VisorApp() {
         {inRun && hud && <Hud hud={hud} mode={mode} onPause={onPause} onBreath={onBreath} />}
 
         {mode === "menu" && panel === "castle" && (
-          <CastleView meta={meta} onMeta={commit} onClose={() => setPanel("home")} />
+          <CastleScreen meta={meta} onMeta={commit} onClose={() => setPanel("home")} />
         )}
         {mode === "menu" && panel !== "castle" && (
           <MenuScreen

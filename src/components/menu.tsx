@@ -196,7 +196,7 @@ function Market({ meta, apply, onBack }: ShopProps) {
       >
         Booster-Pack {meta.castle.boosters}/{BOOSTER_CAP} · {BOOSTER_COST}
       </button>
-      <p className="text-xs font-medium text-muted">Jedes Pack macht den Feuerstoß der Burg härter.</p>
+      <p className="text-xs font-medium text-muted">Jedes Pack macht die Türme deiner Burg 10 % stärker.</p>
       <button type="button" className="btn btn-ink" onClick={onBack}>
         Zurück
       </button>
