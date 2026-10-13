@@ -1,0 +1,4 @@
+dist/
+dist-single/
+package-lock.json
+src/assets/

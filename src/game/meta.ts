@@ -1,3 +1,5 @@
+import { ART } from "@/game/assets";
+
 export type Slot = "helm" | "scarf" | "boots";
 export type Rarity = 0 | 1 | 2 | 3;
 
@@ -57,10 +59,10 @@ export const BOOSTER_CAP = 5;
 export const BOOSTER_COST = 60;
 
 export const SKIN_INFO: { id: WallSkin; name: string; cost: number; src: string }[] = [
-  { id: "ice", name: "Eismauer", cost: 0, src: "/wall-ice.jpg" },
-  { id: "fire", name: "Feuermauer", cost: 80, src: "/wall-fire.jpg" },
-  { id: "lava", name: "Lavamauer", cost: 180, src: "/wall-lava.jpg" },
-  { id: "gold", name: "Goldmauer", cost: 320, src: "/wall-gold.jpg" },
+  { id: "ice", name: "Eismauer", cost: 0, src: ART.wallIce },
+  { id: "fire", name: "Feuermauer", cost: 80, src: ART.wallFire },
+  { id: "lava", name: "Lavamauer", cost: 180, src: ART.wallLava },
+  { id: "gold", name: "Goldmauer", cost: 320, src: ART.wallGold },
 ];
 
 const SKIN_IDS: WallSkin[] = ["ice", "fire", "lava", "gold"];
@@ -155,7 +157,8 @@ function readCastle(raw: unknown): Castle {
     ? c.owned.filter((id): id is WallSkin => SKIN_IDS.includes(id as WallSkin))
     : base.owned;
   if (!owned.includes("ice")) owned.unshift("ice");
-  const skin = SKIN_IDS.includes(c.skin as WallSkin) && owned.includes(c.skin as WallSkin) ? (c.skin as WallSkin) : "ice";
+  const skin =
+    SKIN_IDS.includes(c.skin as WallSkin) && owned.includes(c.skin as WallSkin) ? (c.skin as WallSkin) : "ice";
   return {
     wall: clampInt(c.wall, BUILD_MAX) || 1,
     tower: clampInt(c.tower, BUILD_MAX),
@@ -376,6 +379,10 @@ export function buyRank(m: Meta, key: keyof Meta["ranks"]): Meta | null {
   };
 }
 
+/**
+ * Würfelt ein Ausrüstungsteil. Ein schlechteres oder gleich gutes Teil ersetzt
+ * das vorhandene nicht; dann gibt es 20 % des Preises zurück.
+ */
 export function rollGear(m: Meta): Meta | null {
   const cost = gearCost(m.gearRolls);
   if (m.coins < cost) return null;
@@ -383,15 +390,13 @@ export function rollGear(m: Meta): Meta | null {
   const slot = slots[Math.floor(Math.random() * slots.length)];
   const bag: Rarity[] = [0, 0, 0, 0, 0, 1, 1, 1, 2, 2, 3];
   const rarity = bag[Math.floor(Math.random() * bag.length)];
-  const refund = m.gear[slot] ? Math.floor(cost * 0.2) : 0;
+  const have = m.gear[slot];
+  const upgrade = !have || rarity > have.rarity;
   return {
     ...m,
-    coins: m.coins - cost + refund,
+    coins: m.coins - cost + (upgrade ? 0 : Math.floor(cost * 0.2)),
     gearRolls: m.gearRolls + 1,
-    gear: {
-      ...m.gear,
-      [slot]: { slot, rarity, value: GEAR_TABLE[slot][rarity] },
-    },
+    gear: upgrade ? { ...m.gear, [slot]: { slot, rarity, value: GEAR_TABLE[slot][rarity] } } : m.gear,
   };
 }
 

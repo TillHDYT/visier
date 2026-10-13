@@ -14,10 +14,17 @@
   --radius-card: 1.15rem;
 }
 
+/* Sichere Ränder (Notch, Home-Leiste). Eingebettete Fassungen setzen sie auf 0. */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 @layer base {
   html,
   body {
     height: 100%;
+    margin: 0;
     overflow: hidden;
     background: var(--color-bg);
     color: var(--color-cream);
@@ -82,8 +89,8 @@
 }
 
 .shell {
-  height: 100dvh;
-  width: 100%;
+  position: fixed;
+  inset: 0;
   display: flex;
   justify-content: center;
   background: var(--color-bg);
@@ -108,6 +115,15 @@
   height: 100%;
   display: block;
   touch-action: none;
+}
+
+/* Abgedunkelte Ränder als CSS-Ebene: der Browser legt sie per GPU darüber. */
+.vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 45%, rgba(26, 18, 12, 0.3) 100%);
 }
 
 .playfield.inert {
@@ -163,7 +179,7 @@
   flex-direction: column;
   gap: 0.75rem;
   overflow: auto;
-  padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom));
+  padding: max(1rem, var(--safe-top)) 1rem max(1rem, var(--safe-bottom));
   background: var(--color-cream);
   color: var(--color-ink);
 }
@@ -171,7 +187,7 @@
 .poster.poster-home {
   background:
     linear-gradient(180deg, rgba(12, 6, 4, 0.3) 0%, rgba(12, 6, 4, 0.74) 46%, rgba(8, 4, 3, 0.9) 100%),
-    url("/lava.jpg") center 38% / cover no-repeat;
+    url("./assets/lava.jpg") center 38% / cover no-repeat;
   color: #fff6ea;
 }
 
@@ -253,7 +269,7 @@
   display: flex;
   flex-direction: column;
   pointer-events: none;
-  padding: max(0.6rem, env(safe-area-inset-top)) 0.7rem max(0.6rem, env(safe-area-inset-bottom));
+  padding: max(0.6rem, var(--safe-top)) 0.7rem max(0.6rem, var(--safe-bottom));
 }
 
 .hud button {
@@ -353,7 +369,7 @@
 
 .castle-top {
   position: absolute;
-  top: max(0.6rem, env(safe-area-inset-top));
+  top: max(0.6rem, var(--safe-top));
   left: 0.7rem;
   right: 0.7rem;
   display: flex;
@@ -437,7 +453,7 @@
 
 .realm-top {
   position: absolute;
-  top: max(0.45rem, env(safe-area-inset-top));
+  top: max(0.45rem, var(--safe-top));
   left: 0.55rem;
   right: 0.55rem;
   z-index: 3;
@@ -490,7 +506,7 @@
   z-index: 4;
   display: flex;
   gap: 0.35rem;
-  padding: 0.45rem 0.45rem max(0.45rem, env(safe-area-inset-bottom));
+  padding: 0.45rem 0.45rem max(0.45rem, var(--safe-bottom));
   background: rgba(18, 28, 14, 0.94);
 }
 

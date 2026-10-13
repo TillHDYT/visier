@@ -24,7 +24,12 @@ function Body({ id }: { id: string }) {
       return (
         <>
           <rect x="30" y="28" width="6" height="28" rx="2" fill="#2a2a2e" stroke={ink} strokeWidth="3" />
-          <path d="M33 8 L40 16 L48 14 L42 22 L50 28 L40 30 L44 40 L33 32 L22 40 L26 30 L16 28 L24 22 L18 14 L26 16 Z" fill="#2a2a2e" stroke={ink} strokeWidth="3" />
+          <path
+            d="M33 8 L40 16 L48 14 L42 22 L50 28 L40 30 L44 40 L33 32 L22 40 L26 30 L16 28 L24 22 L18 14 L26 16 Z"
+            fill="#2a2a2e"
+            stroke={ink}
+            strokeWidth="3"
+          />
           <ellipse cx="33" cy="24" rx="5" ry="7" fill="#ff1a1a" stroke={ink} strokeWidth="3" />
         </>
       );
@@ -33,7 +38,17 @@ function Body({ id }: { id: string }) {
         <>
           <path d="M14 50 L46 14" stroke="#fff6ea" strokeWidth="8" strokeLinecap="round" />
           <path d="M14 50 L46 14" stroke={ink} strokeWidth="3" strokeLinecap="round" />
-          <rect x="40" y="28" width="12" height="8" rx="2" transform="rotate(-42 46 32)" fill="#ff3d81" stroke={ink} strokeWidth="3" />
+          <rect
+            x="40"
+            y="28"
+            width="12"
+            height="8"
+            rx="2"
+            transform="rotate(-42 46 32)"
+            fill="#ff3d81"
+            stroke={ink}
+            strokeWidth="3"
+          />
         </>
       );
     case "demon":
@@ -72,7 +87,12 @@ function Body({ id }: { id: string }) {
     case "shuriken":
       return (
         <>
-          <path d="M32 6 L38 26 L58 32 L38 38 L32 58 L26 38 L6 32 L26 26 Z" fill="#7ef0ff" stroke={ink} strokeWidth="3" />
+          <path
+            d="M32 6 L38 26 L58 32 L38 38 L32 58 L26 38 L6 32 L26 26 Z"
+            fill="#7ef0ff"
+            stroke={ink}
+            strokeWidth="3"
+          />
           <circle cx="32" cy="32" r="5" fill="#ff3d81" stroke={ink} strokeWidth="3" />
         </>
       );
@@ -86,7 +106,12 @@ function Body({ id }: { id: string }) {
     case "starwheel":
       return (
         <>
-          <path d="M32 6 L38 24 L58 24 L42 36 L48 56 L32 44 L16 56 L22 36 L6 24 L26 24 Z" fill="#ffd000" stroke={ink} strokeWidth="3" />
+          <path
+            d="M32 6 L38 24 L58 24 L42 36 L48 56 L32 44 L16 56 L22 36 L6 24 L26 24 Z"
+            fill="#ffd000"
+            stroke={ink}
+            strokeWidth="3"
+          />
         </>
       );
     case "force":
@@ -117,8 +142,18 @@ function Body({ id }: { id: string }) {
     case "inferno":
       return (
         <>
-          <path d="M32 6 C44 22 50 28 46 42 C42 54 22 54 18 42 C14 28 22 20 26 28 C28 16 30 12 32 6 Z" fill="#ff6a2a" stroke={ink} strokeWidth="3" />
-          <path d="M32 24 C36 32 38 36 36 44 C30 48 26 42 28 34 C28 30 30 26 32 24 Z" fill="#ffd000" stroke={ink} strokeWidth="3" />
+          <path
+            d="M32 6 C44 22 50 28 46 42 C42 54 22 54 18 42 C14 28 22 20 26 28 C28 16 30 12 32 6 Z"
+            fill="#ff6a2a"
+            stroke={ink}
+            strokeWidth="3"
+          />
+          <path
+            d="M32 24 C36 32 38 36 36 44 C30 48 26 42 28 34 C28 30 30 26 32 24 Z"
+            fill="#ffd000"
+            stroke={ink}
+            strokeWidth="3"
+          />
         </>
       );
     case "lightning":
@@ -162,7 +197,12 @@ function Body({ id }: { id: string }) {
     case "magnetboom":
       return (
         <>
-          <path d="M14 48 C8 26 24 8 44 16 C32 18 30 28 38 32 C46 22 56 32 48 46 C38 38 26 42 14 48 Z" fill="#ff3d81" stroke={ink} strokeWidth="3" />
+          <path
+            d="M14 48 C8 26 24 8 44 16 C32 18 30 28 38 32 C46 22 56 32 48 46 C38 38 26 42 14 48 Z"
+            fill="#ff3d81"
+            stroke={ink}
+            strokeWidth="3"
+          />
           <path d="M46 18 V30 M40 22 H52" stroke="#ffd000" strokeWidth="4" strokeLinecap="round" />
         </>
       );
@@ -188,7 +228,14 @@ function Body({ id }: { id: string }) {
         </>
       );
     case "glove":
-      return <path d="M18 36 V22 H24 V14 H30 V22 H34 V12 H40 V22 H44 V16 H50 V40 C50 50 18 52 18 36 Z" fill="#ff3d81" stroke={ink} strokeWidth="3" />;
+      return (
+        <path
+          d="M18 36 V22 H24 V14 H30 V22 H34 V12 H40 V22 H44 V16 H50 V40 C50 50 18 52 18 36 Z"
+          fill="#ff3d81"
+          stroke={ink}
+          strokeWidth="3"
+        />
+      );
     case "chrono":
       return (
         <>
@@ -198,9 +245,23 @@ function Body({ id }: { id: string }) {
         </>
       );
     case "magnet":
-      return <path d="M16 18 H28 V34 C28 42 36 42 36 34 V18 H48 V36 C48 52 16 52 16 36 Z" fill="#e0233a" stroke={ink} strokeWidth="3" />;
+      return (
+        <path
+          d="M16 18 H28 V34 C28 42 36 42 36 34 V18 H48 V36 C48 52 16 52 16 36 Z"
+          fill="#e0233a"
+          stroke={ink}
+          strokeWidth="3"
+        />
+      );
     case "heart":
-      return <path d="M32 52 L12 32 C6 24 12 12 22 14 C28 16 32 22 32 22 C32 22 36 16 42 14 C52 12 58 24 52 32 Z" fill="#ff3d81" stroke={ink} strokeWidth="3" />;
+      return (
+        <path
+          d="M32 52 L12 32 C6 24 12 12 22 14 C28 16 32 22 32 22 C32 22 36 16 42 14 C52 12 58 24 52 32 Z"
+          fill="#ff3d81"
+          stroke={ink}
+          strokeWidth="3"
+        />
+      );
     case "lens":
       return (
         <>
@@ -209,7 +270,14 @@ function Body({ id }: { id: string }) {
         </>
       );
     case "blood":
-      return <path d="M32 8 C44 24 52 30 48 42 C44 54 20 54 16 42 C12 30 22 22 32 8 Z" fill="#e0233a" stroke={ink} strokeWidth="3" />;
+      return (
+        <path
+          d="M32 8 C44 24 52 30 48 42 C44 54 20 54 16 42 C12 30 22 22 32 8 Z"
+          fill="#e0233a"
+          stroke={ink}
+          strokeWidth="3"
+        />
+      );
     case "ammo":
       return (
         <>
@@ -236,7 +304,14 @@ function Body({ id }: { id: string }) {
         </>
       );
     case "plate":
-      return <path d="M32 8 L52 16 V32 C52 46 32 56 32 56 C32 56 12 46 12 32 V16 Z" fill="#8eb6ff" stroke={ink} strokeWidth="3" />;
+      return (
+        <path
+          d="M32 8 L52 16 V32 C52 46 32 56 32 56 C32 56 12 46 12 32 V16 Z"
+          fill="#8eb6ff"
+          stroke={ink}
+          strokeWidth="3"
+        />
+      );
     case "purse":
       return (
         <>
@@ -284,6 +359,13 @@ function Body({ id }: { id: string }) {
         </>
       );
     default:
-      return <path d="M32 8 L38 26 L58 28 L42 40 L48 58 L32 46 L16 58 L22 40 L6 28 L26 26 Z" fill="#ffd000" stroke={ink} strokeWidth="3" />;
+      return (
+        <path
+          d="M32 8 L38 26 L58 28 L42 40 L48 58 L32 46 L16 58 L22 40 L6 28 L26 26 Z"
+          fill="#ffd000"
+          stroke={ink}
+          strokeWidth="3"
+        />
+      );
   }
 }

@@ -170,8 +170,7 @@ export class Sfx {
     try {
       if (!this.ctx) {
         const AC =
-          window.AudioContext ||
-          (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+          window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
         if (!AC) return;
         this.ctx = new AC();
       }

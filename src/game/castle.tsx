@@ -94,6 +94,8 @@ export function CastleView({
       coins: meta.coins + 280,
       castle: { ...meta.castle, kit: true },
     });
+    // Einmaliges Startpaket beim ersten Öffnen; bewusst ohne Abhängigkeiten.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -181,8 +183,8 @@ export function CastleView({
     function clampCam() {
       const sx = view.w / 2 - view.camX;
       const sy = view.h / 2 - 24 - view.camY;
-      let c = (sx / (view.tw / 2) + sy / (view.th / 2)) / 2;
-      let r = (sy / (view.th / 2) - sx / (view.tw / 2)) / 2;
+      const c = (sx / (view.tw / 2) + sy / (view.th / 2)) / 2;
+      const r = (sy / (view.th / 2) - sx / (view.tw / 2)) / 2;
       const cc = Math.min(GRID_W - 2, Math.max(1, c));
       const rr = Math.min(GRID_H - 2, Math.max(1, r));
       if (cc !== c || rr !== r) {
@@ -283,7 +285,12 @@ export function CastleView({
       if (allies.length < garrison) {
         allyWait -= dt;
         if (allyWait <= 0) {
-          allies.push({ x: keepAt.c + 1.5, y: keepAt.r + CASTLE_S - 0.2, hp: 40 + metaRef.current.castle.keep * 6, cd: 0 });
+          allies.push({
+            x: keepAt.c + 1.5,
+            y: keepAt.r + CASTLE_S - 0.2,
+            hp: 40 + metaRef.current.castle.keep * 6,
+            cd: 0,
+          });
           allyWait = 1.3;
         }
       }
@@ -700,7 +707,13 @@ export function CastleView({
         <div className="realm-card">
           <div className="min-w-0 flex-1">
             <p className="font-display text-2xl leading-none">
-              {sel === "castle" ? "Schloss" : picked?.kind === "tower" ? "Turm" : picked?.kind === "house" ? "Haus" : "Mauer"}
+              {sel === "castle"
+                ? "Schloss"
+                : picked?.kind === "tower"
+                  ? "Turm"
+                  : picked?.kind === "house"
+                    ? "Haus"
+                    : "Mauer"}
             </p>
             <p className="text-xs font-bold">
               Stufe {sel === "castle" ? meta.castle.keep : picked?.level} / {sel === "castle" ? BUILD_MAX : PIECE_MAX}
@@ -909,13 +922,7 @@ function drawRealm(
       const n = hash(c, r);
       const path = c === keepAt.c + 1 && r > keepAt.r + CASTLE_S;
       diamond(ctx, top.x, top.y, tw, th);
-      ctx.fillStyle = castleCell(c, r)
-        ? "#7dce55"
-        : path
-          ? "#c4a15a"
-          : (c + r) % 2 === 0
-            ? "#63c44a"
-            : "#57b440";
+      ctx.fillStyle = castleCell(c, r) ? "#7dce55" : path ? "#c4a15a" : (c + r) % 2 === 0 ? "#63c44a" : "#57b440";
       ctx.fill();
       ctx.strokeStyle = "rgba(30, 90, 28, 0.28)";
       ctx.lineWidth = 1;
@@ -1011,7 +1018,15 @@ function drawTree(ctx: CanvasRenderingContext2D, x: number, y: number, s: number
   ctx.fill();
 }
 
-function prism(ctx: CanvasRenderingContext2D, x: number, y: number, tw: number, th: number, lift: number, colors: { top: string; left: string; right: string }) {
+function prism(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  tw: number,
+  th: number,
+  lift: number,
+  colors: { top: string; left: string; right: string },
+) {
   ctx.fillStyle = colors.left;
   ctx.beginPath();
   ctx.moveTo(x - tw / 2, y + th / 2);
@@ -1073,7 +1088,11 @@ function drawPiece(
     ctx.fillRect(p.x - 3, p.y - h * 0.45, 6, 7);
     return;
   }
-  prism(ctx, p.x, p.y, view.tw * 0.72, view.th * 0.78, 16 + plot.level * 3, { top: "#fff1d2", left: "#c98462", right: "#e7b08a" });
+  prism(ctx, p.x, p.y, view.tw * 0.72, view.th * 0.78, 16 + plot.level * 3, {
+    top: "#fff1d2",
+    left: "#c98462",
+    right: "#e7b08a",
+  });
   ctx.fillStyle = "#d0002b";
   ctx.beginPath();
   ctx.moveTo(p.x, p.y - 34 - plot.level * 3);
@@ -1123,7 +1142,11 @@ function drawCastle(ctx: CanvasRenderingContext2D, view: View, skinId: string, k
   prism(ctx, mid.x, mid.y, view.tw * 1.85, view.th * 1.85, hall, colors);
   ctx.fillStyle = INK;
   for (let i = 0; i < 6; i++) ctx.fillRect(mid.x - 22 + i * 8, mid.y - hall - 7, 5, 8);
-  prism(ctx, mid.x, mid.y, view.tw * 0.72, view.th * 0.72, hall + 26, { top: "#f4f0ea", left: "#4a453f", right: "#8d877f" });
+  prism(ctx, mid.x, mid.y, view.tw * 0.72, view.th * 0.72, hall + 26, {
+    top: "#f4f0ea",
+    left: "#4a453f",
+    right: "#8d877f",
+  });
   ctx.fillStyle = skinId === "gold" ? "#ffd000" : "#d0002b";
   ctx.beginPath();
   ctx.moveTo(mid.x, mid.y - hall - 48);
@@ -1141,7 +1164,11 @@ function drawCastle(ctx: CanvasRenderingContext2D, view: View, skinId: string, k
     [keepAt.c + 1.8, keepAt.r + 1.8],
   ] as const) {
     const t = tileAt(c, r, view);
-    prism(ctx, t.x, t.y, view.tw * 0.62, view.th * 0.62, hall * 0.72, { top: "#e6e0d8", left: "#3f3b37", right: "#7d776f" });
+    prism(ctx, t.x, t.y, view.tw * 0.62, view.th * 0.62, hall * 0.72, {
+      top: "#e6e0d8",
+      left: "#3f3b37",
+      right: "#7d776f",
+    });
     ctx.fillStyle = "#d0002b";
     ctx.beginPath();
     ctx.moveTo(t.x, t.y - hall * 0.72 - 16);
