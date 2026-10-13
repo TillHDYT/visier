@@ -494,10 +494,16 @@ export class CastleScene {
     this.camera.updateMatrixWorld();
   }
 
+  /**
+   * Begrenzt die Kamera und setzt sie sofort neu. Wichtig: Handys melden oft
+   * mehrere Fingerbewegungen pro Bild. Rechnete die nächste Bewegung noch mit
+   * der alten Kamera, schösse die Karte über und spränge hin und her.
+   */
   private clampTarget() {
     this.target.x = Math.max(-6, Math.min(WORLD + 6, this.target.x));
     this.target.z = Math.max(-6, Math.min(WORLD + 10, this.target.z));
     this.dist = Math.max(DIST_MIN, Math.min(DIST_MAX, this.dist));
+    this.placeCamera();
   }
 
   private project(x: number, y: number, z: number): [number, number] {
@@ -559,7 +565,11 @@ export class CastleScene {
     this.sfx.unlock();
     const [x, y] = this.local(e);
     this.pointers.set(e.pointerId, { x, y, sx: x, sy: y });
-    this.overlayCanvas.setPointerCapture(e.pointerId);
+    try {
+      this.overlayCanvas.setPointerCapture(e.pointerId);
+    } catch {
+      /* Zeiger bereits weg */
+    }
     if (this.pointers.size === 2) {
       const [a, b] = [...this.pointers.values()];
       this.gesture = { kind: "pinch", moved: true, dist: Math.hypot(a.x - b.x, a.y - b.y), zoom: this.dist };
