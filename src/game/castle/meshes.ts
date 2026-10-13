@@ -895,6 +895,16 @@ export function cityWall(mats: Materials, wallLevel: number): THREE.Group {
  * Mitte seines Bauplatzes, sein Fuß reicht optisch bis zur vorderen Ecke und
  * läge sonst „unter“ dem Boden. Die Reihenfolge ersetzt den Tiefentest.
  */
+/** Lava-Boden: die Glutrisse leuchten leicht aus sich heraus. */
+function lavaMaterial(map: THREE.Texture) {
+  return new THREE.MeshLambertMaterial({
+    map,
+    emissive: new THREE.Color("#ffffff"),
+    emissiveMap: map,
+    emissiveIntensity: 0.3,
+  });
+}
+
 function flat(m: THREE.Mesh, order: number) {
   (m.material as THREE.Material).depthWrite = false;
   m.renderOrder = order;
@@ -903,11 +913,8 @@ function flat(m: THREE.Mesh, order: number) {
 export function landscape(mats: Materials): THREE.Group {
   const group = new THREE.Group();
   const size = 220;
-  const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(size, size),
-    new THREE.MeshLambertMaterial({ map: mats.grassOut }),
-  );
-  mats.grassOut.repeat.set(size / 3, size / 3);
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(size, size), lavaMaterial(mats.lavaOut));
+  mats.lavaOut.repeat.set(size / 18, size / 18);
   ground.rotation.x = -Math.PI / 2;
   ground.position.set(WORLD / 2, -0.02, WORLD / 2);
   ground.receiveShadow = true;
@@ -915,11 +922,9 @@ export function landscape(mats: Materials): THREE.Group {
   group.add(ground);
 
   const inner = INNER1 - INNER0;
-  const yard = new THREE.Mesh(
-    new THREE.PlaneGeometry(inner + 1, inner + 1),
-    new THREE.MeshLambertMaterial({ map: mats.grassIn }),
-  );
-  mats.grassIn.repeat.set(inner / 2.5, inner / 2.5);
+  const yard = new THREE.Mesh(new THREE.PlaneGeometry(inner + 1, inner + 1), lavaMaterial(mats.lavaIn));
+  // gleiche Kachelgröße wie draußen, nur passend zum Innenhof verschoben
+  mats.lavaIn.repeat.set((inner + 1) / 18, (inner + 1) / 18);
   yard.rotation.x = -Math.PI / 2;
   yard.position.set(WORLD / 2, 0, WORLD / 2);
   yard.receiveShadow = true;
@@ -941,7 +946,8 @@ export function landscape(mats: Materials): THREE.Group {
   const water = new THREE.Mesh(
     new THREE.CircleGeometry(1, 40),
     new THREE.MeshPhongMaterial({
-      color: "#3a86b8",
+      color: "#ff6a1a",
+      emissive: new THREE.Color("#ff3a00"),
       shininess: 90,
       specular: new THREE.Color("#cfe8ff"),
       transparent: true,
@@ -952,7 +958,7 @@ export function landscape(mats: Materials): THREE.Group {
   water.scale.set(14, 22, 1);
   water.position.set(INNER1 + 22, 0.01, WORLD / 2 - 4);
   group.add(water);
-  const shore = new THREE.Mesh(new THREE.CircleGeometry(1, 40), new THREE.MeshLambertMaterial({ color: "#c8b47a" }));
+  const shore = new THREE.Mesh(new THREE.CircleGeometry(1, 40), new THREE.MeshLambertMaterial({ color: "#2a1e18" }));
   shore.rotation.x = -Math.PI / 2;
   shore.scale.set(15.2, 23.2, 1);
   shore.position.set(INNER1 + 22, 0.005, WORLD / 2 - 4);
@@ -975,7 +981,7 @@ export function landscape(mats: Materials): THREE.Group {
     group.add(m);
     const cap = new THREE.Mesh(
       new THREE.ConeGeometry(r * 0.32, h * 0.32, 7),
-      new THREE.MeshLambertMaterial({ color: "#f2f4f6" }),
+      new THREE.MeshLambertMaterial({ color: "#5a2416", emissive: new THREE.Color("#ff3a00"), emissiveIntensity: 0.5 }),
     );
     cap.position.set(x, h - h * 0.16 - 1, z);
     group.add(cap);
@@ -1001,8 +1007,8 @@ export function landscape(mats: Materials): THREE.Group {
   const roundGeo = new THREE.IcosahedronGeometry(1.0, 0);
   roundGeo.translate(0, 1.9, 0);
   const trunks = new THREE.InstancedMesh(trunkGeo, mats.get("trunk"), spots.length);
-  const pines = new THREE.InstancedMesh(crownGeo, new THREE.MeshLambertMaterial({ color: "#2f6a34" }), spots.length);
-  const leafy = new THREE.InstancedMesh(roundGeo, new THREE.MeshLambertMaterial({ color: "#4f8f3a" }), spots.length);
+  const pines = new THREE.InstancedMesh(crownGeo, new THREE.MeshLambertMaterial({ color: "#2a221e" }), spots.length);
+  const leafy = new THREE.InstancedMesh(roundGeo, new THREE.MeshLambertMaterial({ color: "#3a2c24" }), spots.length);
   const m = new THREE.Matrix4();
   const hidden = new THREE.Matrix4().makeScale(0, 0, 0);
   const tint = new THREE.Color();
@@ -1082,10 +1088,19 @@ export class Decor {
     stone.translate(0, 0.12, 0);
     const parts: [THREE.BufferGeometry, THREE.Material, number[]][] = [
       [trunk, mats.get("trunk"), [0, 1]],
-      [blossom, new THREE.MeshLambertMaterial({ color: "#a77ad8" }), [0]],
-      [blossom, new THREE.MeshLambertMaterial({ color: "#4f8a38" }), [1]],
-      [bush, new THREE.MeshLambertMaterial({ color: "#3f7a32" }), [2]],
-      [flowers, new THREE.MeshLambertMaterial({ color: "#e8b4d8" }), [3]],
+      // Verkohlte Bäume und Büsche, Glutnester statt Blumen (Lava-Boden)
+      [blossom, new THREE.MeshLambertMaterial({ color: "#3b2a22" }), [0]],
+      [blossom, new THREE.MeshLambertMaterial({ color: "#4a3426" }), [1]],
+      [bush, new THREE.MeshLambertMaterial({ color: "#2e221c" }), [2]],
+      [
+        flowers,
+        new THREE.MeshLambertMaterial({
+          color: "#ff7a2a",
+          emissive: new THREE.Color("#ff4a10"),
+          emissiveIntensity: 0.8,
+        }),
+        [3],
+      ],
       [stone, mats.get("rock"), [4]],
     ];
     for (const [geo, mat, kinds] of parts) {

@@ -73,7 +73,9 @@ export class CastleScene {
   private scene = new THREE.Scene();
   private camera = new THREE.PerspectiveCamera(32, 1, 1, 500);
   private overlay: CanvasRenderingContext2D;
-  private mats = new Materials();
+  private mats = new Materials(() => {
+    this.dirty = true;
+  });
   private templates = new Templates(this.mats);
   private sfx = new Sfx();
   private target = new THREE.Vector3(WORLD / 2, 0, WORLD / 2);
@@ -149,11 +151,12 @@ export class CastleScene {
     this.castle = castle;
     this.coins = coins;
 
-    const sky = new THREE.Color("#a9cfe0");
+    // Rauchiger Glut-Himmel passend zum Lava-Boden
+    const sky = new THREE.Color("#2b1a15");
     this.scene.background = sky;
-    this.scene.fog = new THREE.Fog(sky, 90, 190);
-    this.scene.add(new THREE.HemisphereLight("#dcecff", "#3e5226", 1.0));
-    this.sun = new THREE.DirectionalLight("#ffe7c2", 2.8);
+    this.scene.fog = new THREE.Fog(sky, 80, 180);
+    this.scene.add(new THREE.HemisphereLight("#ffe0c8", "#4a2014", 1.05));
+    this.sun = new THREE.DirectionalLight("#ffd2a8", 2.8);
     this.sun.position.set(WORLD / 2 - 26, 46, WORLD / 2 + 14);
     this.sun.target.position.set(WORLD / 2, 0, WORLD / 2);
     this.sun.castShadow = true;

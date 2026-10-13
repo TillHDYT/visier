@@ -3,6 +3,7 @@
  * Königreichs. Alles wird einmal erzeugt und von allen Gebäuden geteilt.
  */
 import * as THREE from "three";
+import lavaUrl from "@/assets/lava.jpg";
 import type { WallSkin } from "./model";
 
 type Paint = (g: CanvasRenderingContext2D, n: number, r: () => number) => void;
@@ -150,13 +151,26 @@ const WALL_SKIN: Record<WallSkin, { base: [number, number, number]; mortar: stri
 /** Alle Materialien. Lambert ist auf Handys deutlich günstiger als PBR und reicht hier. */
 export class Materials {
   private map = new Map<string, THREE.Material>();
-  readonly grassOut: THREE.CanvasTexture;
-  readonly grassIn: THREE.CanvasTexture;
+  /** Lava-Boden wie im Survivor-Spiel (außen und im Innenhof, eigene Wiederholung). */
+  readonly lavaOut: THREE.Texture;
+  readonly lavaIn: THREE.Texture;
   readonly road: THREE.CanvasTexture;
 
-  constructor() {
-    this.grassOut = noise(["#4a7a30", "#3e6c28", "#56873a", "#5f8f40", "#36602a"], 2600, 256, 3, "#466f2e");
-    this.grassIn = noise(["#5c8c3a", "#507f33", "#679844", "#72a04a", "#4a7630"], 2600, 256, 5, "#5a8838");
+  constructor(onLoad?: () => void) {
+    const lava = (t: THREE.Texture) => {
+      t.wrapS = THREE.RepeatWrapping;
+      t.wrapT = THREE.RepeatWrapping;
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.anisotropy = 4;
+      return t;
+    };
+    this.lavaOut = lava(
+      new THREE.TextureLoader().load(lavaUrl, () => {
+        this.lavaIn.needsUpdate = true;
+        onLoad?.();
+      }),
+    );
+    this.lavaIn = lava(this.lavaOut.clone());
     this.road = blocks([35, 12, 58], 6, "#6b5a44", 11);
     const lambert = (key: string, p: THREE.MeshLambertMaterialParameters) =>
       this.map.set(key, new THREE.MeshLambertMaterial(p));
