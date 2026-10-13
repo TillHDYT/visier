@@ -257,7 +257,11 @@ export function loadMeta(): Meta {
 }
 
 export function saveMeta(m: Meta) {
-  localStorage.setItem(KEY, JSON.stringify(m));
+  try {
+    localStorage.setItem(KEY, JSON.stringify(m));
+  } catch {
+    /* storage blocked (private mode): keep playing without saving */
+  }
 }
 
 export function rankCost(rank: number): number {

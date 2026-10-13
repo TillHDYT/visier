@@ -87,8 +87,8 @@ export function CastleView({
   keepAt.r = meta.castle.cy;
 
   useEffect(() => {
-    if (meta.castle.kit || sessionStorage.getItem("visier-kit") === "1") return;
-    sessionStorage.setItem("visier-kit", "1");
+    if (meta.castle.kit || readKitFlag()) return;
+    writeKitFlag();
     onMeta({
       ...meta,
       coins: meta.coins + 280,
@@ -1161,4 +1161,20 @@ function drawCastle(ctx: CanvasRenderingContext2D, view: View, skinId: string, k
   ctx.fillStyle = "#ffe56a";
   ctx.fillRect(mid.x - 16, mid.y - hall * 0.35, 6, 8);
   ctx.fillRect(mid.x + 10, mid.y - hall * 0.35, 6, 8);
+}
+
+function readKitFlag() {
+  try {
+    return sessionStorage.getItem("visier-kit") === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeKitFlag() {
+  try {
+    sessionStorage.setItem("visier-kit", "1");
+  } catch {
+    /* storage blocked */
+  }
 }
