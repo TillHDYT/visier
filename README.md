@@ -68,7 +68,7 @@ scripts/                   Spieltest und Einzelseiten-Build
 
 Der große gelbe Knopf im Menü öffnet das Glutreich; der Survivor-Lauf startet über „Überleben“.
 
-- 3D-Ansicht (Three.js) mit Licht, Schatten und Texturen auf demselben Lava-Boden wie das Survivor-Spiel; wird erst beim Öffnen geladen.
+- 3D-Ansicht (Three.js), hell und übersichtlich: Wiese, Pflasterwege, Platz ums Schloss, Wassergraben mit Brücke, bunte Bäume; wird erst beim Öffnen geladen.
 - Immer im Querformat: Hält man das Handy hochkant, wird die Burg um 90° gedreht angezeigt (Hinweis „Handy quer halten“), funktioniert auch mit Rotationssperre.
 - Feste Stadtmauer um einen 36 × 36 Felder großen Innenhof. Sie lässt sich nicht verschieben, nur upgraden (Palisade bis Königsmauer).
 - Die Mauer wächst mit dem Schloss mit: ab Schloss-Stufe 5 Gift-Mauer, ab 10 Eis-Mauer, ab 15 Feuer-Mauer, ab 20 die deutlich größere Mordor-Mauer. Ihre Flächen stammen aus den gemalten Mauer-Bildern in `art/walls/src` (Texturen erzeugt mit `python3 art/walls/build-atlas.py`); Leuchtrisse, Bodennebel und Partikel werden mit jeder Schloss-Stufe stärker.

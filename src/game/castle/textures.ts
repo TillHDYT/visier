@@ -3,7 +3,6 @@
  * Königreichs. Alles wird einmal erzeugt und von allen Gebäuden geteilt.
  */
 import * as THREE from "three";
-import lavaUrl from "@/assets/lava.jpg";
 import type { WallSkin } from "./model";
 
 type Paint = (g: CanvasRenderingContext2D, n: number, r: () => number) => void;
@@ -148,42 +147,86 @@ const WALL_SKIN: Record<WallSkin, { base: [number, number, number]; mortar: stri
   gold: { base: [40, 35, 62], mortar: "#7a6440", trim: "#e7b52c" },
 };
 
+/**
+ * Rasen: kräftiges Grün mit weichen hellen und dunklen Flecken und feinen
+ * Halmen. Ruhig genug, dass Gebäude und Wege gut lesbar bleiben. Nahtlos.
+ */
+function grassTexture() {
+  return tex(512, 21, (g, n, r) => {
+    g.fillStyle = "#78b444";
+    g.fillRect(0, 0, n, n);
+    // weiche Flecken, an den Rändern umlaufend gezeichnet (nahtlos)
+    for (let i = 0; i < 70; i++) {
+      const x = r() * n;
+      const y = r() * n;
+      const rad = 40 + r() * 110;
+      const light = r() < 0.5;
+      for (const dx of [-n, 0, n])
+        for (const dy of [-n, 0, n]) {
+          const grd = g.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, rad);
+          grd.addColorStop(0, light ? "rgba(170,220,90,0.22)" : "rgba(60,120,40,0.2)");
+          grd.addColorStop(1, "rgba(0,0,0,0)");
+          g.fillStyle = grd;
+          g.fillRect(x + dx - rad, y + dy - rad, rad * 2, rad * 2);
+        }
+    }
+    // feine Halme
+    for (let i = 0; i < 14000; i++) {
+      const x = r() * n;
+      const y = r() * n;
+      g.strokeStyle = r() < 0.5 ? "rgba(150,205,85,0.35)" : "rgba(70,130,45,0.3)";
+      g.lineWidth = 1;
+      g.beginPath();
+      g.moveTo(x, y);
+      g.lineTo(x + (r() - 0.5) * 2, y - 2 - r() * 4);
+      g.stroke();
+    }
+  });
+}
+
+/** Helles Steinpflaster (beige), wie gepflegte Plätze und Wege in einer Stadt. */
+function pavingTexture() {
+  return tex(256, 23, (g, n, r) => {
+    g.fillStyle = "#cdbb98";
+    g.fillRect(0, 0, n, n);
+    const cells = 8;
+    const w = n / cells;
+    for (let y = 0; y < cells; y++)
+      for (let x = 0; x < cells; x++) {
+        const l = 80 + (r() - 0.5) * 8;
+        g.fillStyle = `hsl(${38 + (r() - 0.5) * 6}, ${28 + r() * 10}%, ${l}%)`;
+        g.beginPath();
+        g.roundRect(x * w + 2, y * w + 2, w - 4, w - 4, 4);
+        g.fill();
+        g.fillStyle = "rgba(255,255,255,0.25)";
+        g.fillRect(x * w + 4, y * w + 3, w - 8, 2);
+        g.fillStyle = "rgba(120,95,60,0.18)";
+        g.fillRect(x * w + 4, y * w + w - 5, w - 8, 2);
+      }
+  });
+}
+
 /** Alle Materialien. Lambert ist auf Handys deutlich günstiger als PBR und reicht hier. */
 export class Materials {
   private map = new Map<string, THREE.Material>();
-  /** Lava-Boden wie im Survivor-Spiel (außen und im Innenhof, eigene Wiederholung). */
-  readonly lavaOut: THREE.Texture;
-  readonly lavaIn: THREE.Texture;
-  readonly lavaPool: THREE.Texture;
+  /** Heller Rasen (draußen und im Innenhof) und helles Pflaster für Wege und Plätze. */
+  readonly grass: THREE.CanvasTexture;
+  readonly paving: THREE.CanvasTexture;
   readonly road: THREE.CanvasTexture;
 
-  constructor(onLoad?: () => void) {
-    const lava = (t: THREE.Texture) => {
-      t.wrapS = THREE.RepeatWrapping;
-      t.wrapT = THREE.RepeatWrapping;
-      t.colorSpace = THREE.SRGBColorSpace;
-      t.anisotropy = 4;
-      return t;
-    };
-    this.lavaOut = lava(
-      new THREE.TextureLoader().load(lavaUrl, () => {
-        this.lavaIn.needsUpdate = true;
-        this.lavaPool.needsUpdate = true;
-        onLoad?.();
-      }),
-    );
-    this.lavaIn = lava(this.lavaOut.clone());
-    this.lavaPool = lava(this.lavaOut.clone());
+  constructor() {
+    this.grass = grassTexture();
+    this.paving = pavingTexture();
     this.road = blocks([35, 12, 58], 6, "#6b5a44", 11);
     const lambert = (key: string, p: THREE.MeshLambertMaterialParameters) =>
       this.map.set(key, new THREE.MeshLambertMaterial(p));
-    lambert("stone", { map: blocks([30, 6, 60], 4, "#5a524a", 1) });
-    lambert("stoneLight", { map: blocks([40, 22, 80], 4, "#9a8c76", 2) });
+    lambert("stone", { map: blocks([34, 14, 70], 4, "#8a7c68", 1) });
+    lambert("stoneLight", { map: blocks([40, 26, 86], 4, "#b0a084", 2) });
     lambert("plaster", { map: noise(["#efe4cc", "#e2d4b8", "#f6eedc"], 900, 128, 4, "#ece0c6") });
     lambert("wood", { map: planks([28, 45, 38], 6) });
     lambert("woodDark", { map: planks([22, 40, 24], 7) });
-    lambert("roofRed", { map: tiles([8, 58, 42], 8) });
-    lambert("roofBlue", { map: tiles([215, 50, 42], 9) });
+    lambert("roofRed", { map: tiles([6, 70, 48], 8) });
+    lambert("roofBlue", { map: tiles([212, 62, 50], 9) });
     lambert("roofGold", { map: tiles([42, 80, 52], 10), emissive: new THREE.Color("#3a2600") });
     lambert("thatch", {
       map: tex(128, 12, (g, n, r) => {

@@ -73,9 +73,7 @@ export class CastleScene {
   private scene = new THREE.Scene();
   private camera = new THREE.PerspectiveCamera(32, 1, 1, 500);
   private overlay: CanvasRenderingContext2D;
-  private mats = new Materials(() => {
-    this.dirty = true;
-  });
+  private mats = new Materials();
   private templates = new Templates(this.mats);
   private sfx = new Sfx();
   private target = new THREE.Vector3(WORLD / 2, 0, WORLD / 2);
@@ -146,17 +144,17 @@ export class CastleScene {
     this.renderer.shadowMap.autoUpdate = false;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
+    this.renderer.toneMappingExposure = 1.12;
     this.overlay = overlayCanvas.getContext("2d")!;
     this.castle = castle;
     this.coins = coins;
 
-    // Rauchiger Glut-Himmel passend zum Lava-Boden
-    const sky = new THREE.Color("#2b1a15");
+    // Heller Sommertag: klarer Himmel, weicher Dunst am Horizont
+    const sky = new THREE.Color("#a9d8f2");
     this.scene.background = sky;
-    this.scene.fog = new THREE.Fog(sky, 80, 180);
-    this.scene.add(new THREE.HemisphereLight("#ffe0c8", "#4a2014", 1.05));
-    this.sun = new THREE.DirectionalLight("#ffd2a8", 2.8);
+    this.scene.fog = new THREE.Fog(sky, 110, 240);
+    this.scene.add(new THREE.HemisphereLight("#ffffff", "#6a8a40", 1.15));
+    this.sun = new THREE.DirectionalLight("#fff1dc", 2.7);
     this.sun.position.set(WORLD / 2 - 26, 46, WORLD / 2 + 14);
     this.sun.target.position.set(WORLD / 2, 0, WORLD / 2);
     this.sun.castShadow = true;
