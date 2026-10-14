@@ -9,6 +9,7 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import { INNER0, INNER1, ROAD_END, SIZE, WORLD, tierOf, type BuildingKind } from "./model";
 import { wallTowers } from "./raid";
 import type { Mat, Materials } from "./textures";
+import * as town from "./town";
 
 const euler = new THREE.Euler();
 const quat = new THREE.Quaternion();
@@ -338,123 +339,6 @@ function blades(mats: Materials, size: number): THREE.Object3D {
 // ---------------------------------------------------------------------------
 // Gebäude
 
-function house(k: Kit, l: number) {
-  if (l === 1) {
-    k.box("wood", 1.2, 0.75, 1.0, 0, 0, 0);
-    k.gable("thatch", 1.45, 0.75, 1.25, 0, 0.75, 0, Math.PI / 2);
-    k.box("dark", 0.28, 0.45, 0.04, 0.2, 0, 0.51);
-    return;
-  }
-  const w = [0, 1.45, 1.55, 1.6, 1.75][l - 1];
-  const d = [0, 1.25, 1.35, 1.4, 1.55][l - 1];
-  const wallMat: Mat = l === 5 ? "stoneLight" : "plaster";
-  const roofMat: Mat = l === 5 ? "roofGold" : l === 4 ? "roofBlue" : "roofRed";
-  const win: Mat = l >= 4 ? "glow" : "dark";
-  k.box("stone", w + 0.1, 0.22, d + 0.1, 0, 0, 0);
-  if (l === 2) {
-    k.box(wallMat, w, 0.95, d, 0, 0.22, 0);
-    k.windows(win, w, d, 0.5, 0.28, 2);
-    k.gable(roofMat, w + 0.3, 0.8, d + 0.2, 0, 1.17, 0);
-    k.box("stone", 0.22, 0.7, 0.22, -0.4, 1.3, -0.3);
-  } else {
-    const floor = l === 3 ? 0.85 : 0.9;
-    k.box(l === 3 ? "stone" : wallMat, w, floor, d, 0, 0.22, 0);
-    k.box(wallMat, w, floor, d, 0, 0.22 + floor, 0);
-    if (l === 3) {
-      for (const t of [-w / 2, -w / 6, w / 6, w / 2])
-        k.box("woodDark", 0.07, floor, 0.05, t, 0.22 + floor, d / 2 + 0.01);
-      for (const t of [-d / 2, 0, d / 2]) k.box("woodDark", 0.05, floor, 0.07, w / 2 + 0.01, 0.22 + floor, t);
-      k.box("woodDark", w + 0.04, 0.07, d + 0.04, 0, 0.22 + floor, 0);
-    }
-    k.windows(win, w, d, 0.42, 0.3, 3);
-    k.windows(win, w, d, 0.3 + floor, 0.3, 3);
-    const top = 0.22 + floor * 2;
-    k.gable(roofMat, w + 0.35, 0.95, d + 0.25, 0, top, 0);
-    k.box("stone", 0.24, 0.9, 0.24, -w / 3, top + 0.2, -d / 4);
-    if (l >= 4) {
-      k.box(wallMat, 0.6, top + 0.5, 0.6, w / 2 - 0.1, 0, -d / 2 + 0.1);
-      k.pyramid(roofMat, 0.75, 0.7, w / 2 - 0.1, top + 0.5, -d / 2 + 0.1);
-      k.banner(l === 5 ? "bannerPurple" : "bannerRed", -w / 4, top - 0.05, d / 2 + 0.04);
-    }
-    if (l === 5) {
-      k.banner("bannerPurple", w / 4, top - 0.05, d / 2 + 0.04);
-      k.ball("gold", 0.12, 0, top + 1.05, 0);
-      k.ball("gold", 0.08, w / 2 - 0.1, top + 1.28, -d / 2 + 0.1);
-    }
-  }
-  k.box("woodDark", 0.3, 0.55, 0.04, 0, 0.22, d / 2 + 0.03);
-}
-
-function tower(k: Kit, l: number) {
-  if (l === 1) {
-    for (const [x, z] of [
-      [-0.45, -0.45],
-      [0.45, -0.45],
-      [-0.45, 0.45],
-      [0.45, 0.45],
-    ] as const)
-      k.cyl("trunk", 0.08, 0.1, 2.2, 6, x, 0, z);
-    k.box("wood", 0.95, 0.06, 0.06, 0, 0.9, 0.45);
-    k.box("wood", 0.06, 0.06, 0.95, 0.45, 0.9, 0);
-    k.box("wood", 1.25, 0.14, 1.25, 0, 2.0, 0);
-    k.box("wood", 1.2, 0.35, 0.06, 0, 2.14, 0.6);
-    k.box("wood", 0.06, 0.35, 1.2, 0.6, 2.14, 0);
-    k.pyramid("thatch", 1.35, 0.7, 0, 2.5, 0);
-    for (const [x, z] of [
-      [-0.55, -0.55],
-      [0.55, 0.55],
-      [-0.55, 0.55],
-      [0.55, -0.55],
-    ] as const)
-      k.cyl("trunk", 0.04, 0.04, 0.4, 4, x, 2.14, z);
-    return;
-  }
-  if (l === 2) {
-    k.box("stone", 1.1, 0.3, 1.1, 0, 0, 0);
-    k.box("stone", 0.95, 2.4, 0.95, 0, 0.3, 0);
-    k.windows("dark", 0.95, 0.95, 1.4, 0.32, 1);
-    k.box("stone", 1.2, 0.25, 1.2, 0, 2.7, 0);
-    k.merlons("stone", 1.2, 1.2, 2.95, 0.18);
-    k.pyramid("roofRed", 1.1, 0.9, 0, 3.0, 0);
-    return;
-  }
-  const r = [0, 0, 0.58, 0.62, 0.68][l - 1];
-  const h = [0, 0, 3.0, 3.6, 4.2][l - 1];
-  const body: Mat = l === 3 ? "stone" : "stoneLight";
-  const roof: Mat = l === 5 ? "roofGold" : l === 4 ? "roofBlue" : "roofRed";
-  k.cyl("stone", r + 0.18, r + 0.25, 0.35, 10, 0, 0, 0);
-  k.cyl(body, r, r + 0.06, h, 10, 0, 0.35, 0);
-  for (let i = 0; i < 3; i++) {
-    const a = 0.8 + i * 0.9;
-    k.box(
-      l >= 4 ? "glow" : "dark",
-      0.16,
-      0.34,
-      0.04,
-      Math.cos(a) * (r + 0.02),
-      0.9 + i * 0.85,
-      Math.sin(a) * (r + 0.02),
-      Math.PI / 2 - a,
-    );
-  }
-  if (l >= 4) {
-    const band: Mat = l === 5 ? "gold" : "metal";
-    k.cyl(band, r + 0.03, r + 0.03, 0.1, 10, 0, 0.9, 0);
-    k.cyl(band, r + 0.03, r + 0.03, 0.1, 10, 0, h - 0.2, 0);
-  }
-  k.cyl(body, r + 0.18, r + 0.12, 0.28, 10, 0, h + 0.35, 0);
-  k.ring(body, r + 0.12, h + 0.63, 10, 0.17);
-  k.cone(roof, r + 0.1, 1.1 + l * 0.15, 10, 0, h + 0.7, 0);
-  const tip = h + 0.7 + 1.1 + l * 0.15;
-  if (l === 3) k.flag("bannerRed", 0, tip, 0);
-  if (l === 4) k.add("crystal", new THREE.OctahedronGeometry(0.22), 0, tip + 0.35, 0, 0, 0, 0, 1, 1.6, 1);
-  if (l === 5) {
-    k.ball("glow", 0.26, 0, tip + 0.35, 0, 1, 1);
-    for (const a of [0, Math.PI / 2, Math.PI, -Math.PI / 2])
-      k.box("fire", 0.14, 0.14, 0.14, Math.cos(a) * (r + 0.3), h + 0.63, Math.sin(a) * (r + 0.3));
-  }
-}
-
 function field(k: Kit, l: number) {
   k.box("soil", 2.7, 0.06, 2.7, 0, 0, 0);
   const crop: Mat = l >= 3 ? "wheat" : "crop";
@@ -710,13 +594,26 @@ export class Templates {
     if (!t) {
       const { tier, sub } = tierOf(level);
       const k = new Kit(this.mats);
-      if (kind === "house") house(k, tier);
-      else if (kind === "tower") tower(k, tier);
-      else if (kind === "field") field(k, tier);
-      else if (kind === "farm") farm(k, tier, this.mats);
-      else if (kind === "mine") mine(k, tier);
-      else if (kind === "coal") coal(k, tier);
-      else goldmine(k, tier);
+      const build: Record<Exclude<BuildingKind, "castle">, () => void> = {
+        house: () => town.house(k, tier),
+        tower: () => town.tower(k, tier),
+        field: () => field(k, tier),
+        farm: () => farm(k, tier, this.mats),
+        mine: () => mine(k, tier),
+        coal: () => coal(k, tier),
+        goldmine: () => goldmine(k, tier),
+        barracks: () => town.barracks(k, tier),
+        market: () => town.market(k, tier),
+        tavern: () => town.tavern(k, tier),
+        academy: () => town.academy(k, tier),
+        chapel: () => town.chapel(k, tier),
+        storehouse: () => town.storehouse(k, tier),
+        smithy: () => town.smithy(k, tier),
+        stable: () => town.stable(k, tier),
+        fountain: () => town.fountain(k, tier),
+        garden: () => town.garden(k, tier),
+      };
+      if (kind !== "castle") build[kind]();
       const body = k.build();
       // Jede Unterstufe etwas höher und breiter
       body.scale.set(1 + 0.025 * sub, 1 + 0.07 * sub, 1 + 0.025 * sub);
@@ -1220,5 +1117,64 @@ export class Decor {
       });
       im.instanceMatrix.needsUpdate = true;
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Bewohner: kleine Figuren, die auf den gepflasterten Wegen hin und her gehen.
+
+const PATHS: [number, number, number, number][] = [
+  [WORLD / 2, ROAD_END + 0.5, WORLD / 2, INNER1 - 0.5],
+  [INNER0 + 1, 30.5, INNER1 - 1, 30.5],
+  [INNER0 + 0.9, INNER0 + 0.9, INNER1 - 0.9, INNER0 + 0.9],
+  [INNER0 + 0.9, INNER0 + 0.9, INNER0 + 0.9, INNER1 - 0.9],
+  [INNER1 - 0.9, INNER0 + 0.9, INNER1 - 0.9, INNER1 - 0.9],
+  [19, 24, 29, 24],
+  [19, 14, 19, 24],
+  [29, 14, 29, 24],
+];
+const TUNICS = ["#2f6bd8", "#d8402c", "#3f9a3a", "#8a5a2c", "#e6b23a", "#7a3fc0", "#f2ead6"];
+
+export class Citizens {
+  readonly mesh: THREE.InstancedMesh;
+  private walkers: { path: number; t: number; speed: number; side: number }[] = [];
+  private m = new THREE.Matrix4();
+  private q = new THREE.Quaternion();
+  private up = new THREE.Vector3(0, 1, 0);
+  private time = 0;
+
+  constructor(count = 22) {
+    const geo = unitGeometry();
+    this.mesh = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial(), count);
+    this.mesh.castShadow = false;
+    this.mesh.raycast = () => {};
+    let seed = 41;
+    const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const c = new THREE.Color();
+    for (let i = 0; i < count; i++) {
+      this.walkers.push({ path: i % PATHS.length, t: r(), speed: 0.025 + r() * 0.025, side: (r() - 0.5) * 0.7 });
+      this.mesh.setColorAt(i, c.set(TUNICS[i % TUNICS.length]));
+    }
+    this.tick(0);
+  }
+
+  tick(dt: number) {
+    this.time += dt;
+    this.walkers.forEach((w, i) => {
+      w.t += w.speed * dt;
+      const [ax, az, bx, bz] = PATHS[w.path];
+      // hin und zurück
+      const f = w.t % 2 < 1 ? w.t % 1 : 1 - (w.t % 1);
+      const dir = w.t % 2 < 1 ? 1 : -1;
+      const len = Math.hypot(bx - ax, bz - az) || 1;
+      const nx = -(bz - az) / len;
+      const nz = (bx - ax) / len;
+      const x = ax + (bx - ax) * f + nx * w.side;
+      const z = az + (bz - az) * f + nz * w.side;
+      const bob = Math.abs(Math.sin(this.time * 8 + i)) * 0.04;
+      this.q.setFromAxisAngle(this.up, Math.atan2((bx - ax) * dir, (bz - az) * dir));
+      this.mesh.setMatrixAt(i, this.m.compose(new THREE.Vector3(x, bob, z), this.q, new THREE.Vector3(0.8, 0.8, 0.8)));
+    });
+    this.mesh.instanceMatrix.needsUpdate = true;
   }
 }

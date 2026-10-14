@@ -474,6 +474,17 @@
   box-shadow: var(--shadow-hard);
 }
 
+.kingdom-tabs {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.kingdom-tabs .chapter {
+  flex: 1;
+  padding: 0.4rem 0.3rem;
+  text-align: center;
+}
+
 .kingdom-list {
   display: flex;
   flex-direction: column;

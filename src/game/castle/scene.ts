@@ -23,7 +23,7 @@ import {
   type Resource,
 } from "./model";
 import { CastleLook, castleOpaqueAt, preloadCastleArt } from "./castle-look";
-import { Decor, Templates, cityWall, landscape, unitGeometry } from "./meshes";
+import { Citizens, Decor, Templates, cityWall, landscape, unitGeometry } from "./meshes";
 import { WallLook, preloadWallArt, wallArtReady, wallStyleOf } from "./wall-look";
 import { SEG_PER_SIDE, foesLeft, segmentCenter, startRaid, stepRaid, type Raid, type RaidEvent } from "./raid";
 import { Materials } from "./textures";
@@ -100,6 +100,8 @@ export class CastleScene {
   private raidAcc = 0;
   private raidEmit = 0;
   private units = new THREE.Group();
+  /** Bewohner auf den Wegen (machen die Stadt lebendig; bei Angriffen versteckt). */
+  private people = new Citizens();
   private unitGeo = unitGeometry();
   private unitMats = {
     orc: new THREE.MeshLambertMaterial({ color: "#5aa83a" }),
@@ -173,6 +175,7 @@ export class CastleScene {
     this.decor = new Decor(this.mats);
     this.scene.add(this.decor.group);
     this.scene.add(this.units);
+    this.scene.add(this.people.mesh);
 
     this.ghostPad = pad(0x66ff66);
     this.selPad = pad(0xffd000);
@@ -811,12 +814,15 @@ export class CastleScene {
         animating = true;
       }
     }
-    const ambient = (this.spinners.length > 0 || !!this.look?.animated || !!this.wallLook) && now - this.overlayAt > 33;
+    // Bewohner gehen immer: 30 Bilder pro Sekunde genügen und schonen den Akku.
+    const ambient = now - this.overlayAt > 33;
     if (ambient) {
       // Windmühlen und Schloss-Partikel: 30 Bilder pro Sekunde genügen und schonen den Akku.
       const step = Math.min(0.1, (now - this.overlayAt) / 1000);
       for (const s of this.spinners) s.rotation.z += step * 1.2;
       this.look?.tick(step);
+      this.people.mesh.visible = !this.raid;
+      if (!this.raid) this.people.tick(step);
       this.wallLook?.tick(step);
     }
 

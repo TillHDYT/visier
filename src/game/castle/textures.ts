@@ -138,7 +138,16 @@ export type Mat =
   | "trunk"
   | "wall"
   | "wallTrim"
-  | "dark";
+  | "dark"
+  | "paving"
+  | "water"
+  | "awning"
+  | "canvas"
+  | "hedge"
+  | "marble"
+  | "petalRed"
+  | "petalYellow"
+  | "petalPink";
 
 const WALL_SKIN: Record<WallSkin, { base: [number, number, number]; mortar: string; trim: string }> = {
   ice: { base: [210, 10, 62], mortar: "#5d646c", trim: "#8fb6d8" },
@@ -276,6 +285,15 @@ export class Materials {
     lambert("leaf", { color: "#4e8f3a" });
     lambert("trunk", { color: "#6b4a2c" });
     lambert("dark", { color: "#1c1612" });
+    lambert("paving", { map: this.paving, color: new THREE.Color(0.86, 0.82, 0.76) });
+    lambert("water", { color: "#3d9fd6", emissive: new THREE.Color("#0b3d66") });
+    lambert("awning", { color: "#d8463a" });
+    lambert("canvas", { color: "#f4ead2" });
+    lambert("hedge", { color: "#3f8a2e" });
+    lambert("marble", { color: "#eeeae2" });
+    lambert("petalRed", { color: "#ff5a5a" });
+    lambert("petalYellow", { color: "#ffd84a" });
+    lambert("petalPink", { color: "#ff9ad0" });
     this.setSkin("ice");
   }
 

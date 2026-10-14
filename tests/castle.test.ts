@@ -298,3 +298,24 @@ describe("Königreich: Mauer-Stil folgt dem Schloss", () => {
     expect(wallStyleOf(9).strength).toBeGreaterThan(wallStyleOf(5).strength);
   });
 });
+
+describe("Königreich: Stadtgebäude", () => {
+  it("neue Gebäude lassen sich bauen; Stadtgebäude zählen nicht zur Schloss-Voraussetzung", async () => {
+    const { DECOR, KINDS } = await import("@/game/castle/model");
+    expect(KINDS.length).toBe(18);
+    let c = rich(defaultCastle(0));
+    const before = castleRequirement(c);
+    c = place(c, "tavern", INNER0, INNER0, RICH)!.castle;
+    c = place(c, "fountain", INNER0 + 4, INNER0, RICH)!.castle;
+    expect(DECOR.has("tavern")).toBe(true);
+    expect(castleRequirement(c).needed).toBe(before.needed);
+    expect(place(c, "market", INNER0, INNER0 + 4, RICH)).not.toBeNull();
+  });
+
+  it("Kasernen stellen zusätzliche Verteidiger", () => {
+    const c = rich(defaultCastle(0));
+    const plain = startRaid(c, 0, 1).guards.length;
+    const withBarracks = place(c, "barracks", INNER0, INNER0, RICH)!.castle;
+    expect(startRaid(withBarracks, 0, 1).guards.length).toBeGreaterThan(plain);
+  });
+});

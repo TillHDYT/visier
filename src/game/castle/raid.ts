@@ -165,6 +165,9 @@ export function startRaid(castle: Castle, warriors: number, seed = Date.now()): 
     }
   };
   for (const b of castle.buildings) if (b.kind === "house") addGuards(b, b.level, b.level);
+  // Kasernen stellen mehr und stärkere Verteidiger
+  for (const b of castle.buildings)
+    if (b.kind === "barracks") addGuards(b, statsFor("barracks", b.level).defenders ?? 2, b.level + 4);
   const keep = castle.buildings.find((b) => b.kind === "castle");
   if (keep) addGuards(keep, Math.min(12, warriors), castleLevel(castle));
 

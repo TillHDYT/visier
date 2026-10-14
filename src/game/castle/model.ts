@@ -3,7 +3,25 @@
  * Rohstoffe und passive Produktion. Reine Funktionen ohne DOM.
  */
 
-export type BuildingKind = "castle" | "tower" | "house" | "field" | "farm" | "mine" | "coal" | "goldmine";
+export type BuildingKind =
+  | "castle"
+  | "tower"
+  | "house"
+  | "field"
+  | "farm"
+  | "mine"
+  | "coal"
+  | "goldmine"
+  | "barracks"
+  | "market"
+  | "tavern"
+  | "academy"
+  | "chapel"
+  | "storehouse"
+  | "smithy"
+  | "stable"
+  | "fountain"
+  | "garden";
 export type Resource = "gold" | "food" | "stone" | "coal";
 export type WallSkin = "ice" | "fire" | "lava" | "gold";
 
@@ -44,7 +62,42 @@ export const MAX_LEVEL = 20;
 /** Alle 4 Stufen ein neues Aussehen (5 Stufen-Stile). */
 export const TIERS = 5;
 export const SKIN_IDS: WallSkin[] = ["ice", "fire", "lava", "gold"];
-export const KINDS: BuildingKind[] = ["castle", "tower", "house", "field", "farm", "mine", "coal", "goldmine"];
+export const KINDS: BuildingKind[] = [
+  "castle",
+  "tower",
+  "house",
+  "field",
+  "farm",
+  "mine",
+  "coal",
+  "goldmine",
+  "barracks",
+  "market",
+  "tavern",
+  "academy",
+  "chapel",
+  "storehouse",
+  "smithy",
+  "stable",
+  "fountain",
+  "garden",
+];
+
+/**
+ * Stadtgebäude ohne eigene Wirkung im Kampf oder in der Produktion: Sie machen
+ * die Stadt dichter und schöner und zählen nicht zu den Voraussetzungen für
+ * das Schloss-Upgrade.
+ */
+export const DECOR: ReadonlySet<BuildingKind> = new Set([
+  "tavern",
+  "academy",
+  "chapel",
+  "storehouse",
+  "smithy",
+  "stable",
+  "fountain",
+  "garden",
+]);
 /** Speicher der Produktionsgebäude in Stunden. */
 export const STORE_HOURS = 8;
 
@@ -57,6 +110,16 @@ export const KIND_NAME: Record<BuildingKind, string> = {
   mine: "Steinbruch",
   coal: "Kohlewerk",
   goldmine: "Goldmine",
+  barracks: "Kaserne",
+  market: "Marktplatz",
+  tavern: "Taverne",
+  academy: "Akademie",
+  chapel: "Kapelle",
+  storehouse: "Lagerhaus",
+  smithy: "Schmiede",
+  stable: "Stall",
+  fountain: "Brunnen",
+  garden: "Lustgarten",
 };
 
 export const RES_NAME: Record<Resource, string> = { gold: "Gold", food: "Nahrung", stone: "Stein", coal: "Kohle" };
@@ -70,6 +133,16 @@ export const SIZE: Record<BuildingKind, number> = {
   mine: 3,
   coal: 3,
   goldmine: 3,
+  barracks: 3,
+  market: 3,
+  tavern: 2,
+  academy: 3,
+  chapel: 2,
+  storehouse: 3,
+  smithy: 2,
+  stable: 3,
+  fountain: 2,
+  garden: 2,
 };
 
 const TIER_TITLE: Record<Exclude<BuildingKind, "castle"> | "wall", string[]> = {
@@ -78,6 +151,16 @@ const TIER_TITLE: Record<Exclude<BuildingKind, "castle"> | "wall", string[]> = {
   house: ["Hütte", "Kate", "Fachwerkhaus", "Gutshaus", "Halle"],
   field: ["Acker", "Weizenfeld", "Goldfeld", "Großfeld", "Kornkammer"],
   farm: ["Scheune", "Hof", "Gutshof", "Mühlenhof", "Großgut"],
+  barracks: ["Wachstube", "Kaserne", "Garnison", "Kriegshalle", "Ordensburg"],
+  market: ["Marktstand", "Markt", "Handelsplatz", "Kaufhaus", "Großmarkt"],
+  tavern: ["Schenke", "Gasthaus", "Taverne", "Herberge", "Prunkgasthof"],
+  academy: ["Schreibstube", "Schule", "Akademie", "Bibliothek", "Gelehrtenhalle"],
+  chapel: ["Schrein", "Kapelle", "Kirche", "Abtei", "Dom"],
+  storehouse: ["Schuppen", "Lager", "Lagerhaus", "Speicher", "Kornspeicher"],
+  smithy: ["Esse", "Schmiede", "Waffenschmiede", "Hammerwerk", "Meisterschmiede"],
+  stable: ["Koppel", "Stall", "Reitstall", "Gestüt", "Königsgestüt"],
+  fountain: ["Brunnen", "Zierbrunnen", "Marmorbrunnen", "Prunkbrunnen", "Goldbrunnen"],
+  garden: ["Beet", "Garten", "Lustgarten", "Rosengarten", "Schlossgarten"],
   mine: ["Geröll", "Steinbruch", "Tiefbruch", "Steinwerk", "Großsteinwerk"],
   coal: ["Meiler", "Köhlerei", "Kohlenhof", "Kohlewerk", "Hochofen"],
   goldmine: ["Schürfstelle", "Stollen", "Förderturm", "Goldwerk", "Goldene Mine"],
@@ -124,6 +207,7 @@ export const PRODUCTION: Partial<Record<BuildingKind, { res: Resource; base: num
   mine: { res: "stone", base: 80 },
   coal: { res: "coal", base: 50 },
   goldmine: { res: "gold", base: 40 },
+  market: { res: "gold", base: 25 },
 };
 
 export function perHour(kind: BuildingKind, level: number): number {
@@ -150,6 +234,16 @@ export function limitFor(kind: BuildingKind, castleLevel: number): number {
       return Math.floor((l + 3) / 4);
     case "goldmine":
       return 1 + Math.floor(l / 5);
+    case "barracks":
+      return 1 + Math.floor(l / 6);
+    case "market":
+      return 1 + Math.floor(l / 8);
+    case "fountain":
+    case "garden":
+      return 3 + Math.floor(l / 2);
+    default:
+      // übrige Stadtgebäude: großzügig, damit die Stadt dicht werden kann
+      return 2 + Math.floor(l / 4);
   }
 }
 
@@ -163,6 +257,16 @@ const BASE: Record<BuildingKind | "wall", Required<Cost>> = {
   mine: { gold: 50, food: 100, stone: 20, coal: 30 },
   coal: { gold: 60, food: 120, stone: 60, coal: 0 },
   goldmine: { gold: 100, food: 150, stone: 100, coal: 50 },
+  barracks: { gold: 90, food: 120, stone: 120, coal: 60 },
+  market: { gold: 120, food: 100, stone: 80, coal: 40 },
+  tavern: { gold: 50, food: 80, stone: 40, coal: 20 },
+  academy: { gold: 80, food: 60, stone: 100, coal: 40 },
+  chapel: { gold: 70, food: 40, stone: 90, coal: 30 },
+  storehouse: { gold: 50, food: 60, stone: 70, coal: 20 },
+  smithy: { gold: 60, food: 40, stone: 60, coal: 60 },
+  stable: { gold: 60, food: 100, stone: 50, coal: 20 },
+  fountain: { gold: 40, food: 0, stone: 60, coal: 10 },
+  garden: { gold: 30, food: 40, stone: 20, coal: 0 },
 };
 /** Preissteigerung je Stufe (Stufe 20 ≈ 230-fach des Baupreises). */
 const PRICE = 1.32;
@@ -227,6 +331,8 @@ export function statsFor(kind: BuildingKind | "wall", level: number, boosters = 
       return { hp: 600 + 300 * l, dmg: 10 + 3 * l, range: 7 + 0.1 * l, rate: 0.9 };
     case "house":
       return { hp: 100 + 40 * l, defenders: 1 + Math.floor(l / 4) };
+    case "barracks":
+      return { hp: 220 + 60 * l, defenders: 2 + Math.floor(l / 3) };
     default:
       return { hp: 100 + 30 * l };
   }
@@ -382,7 +488,7 @@ export function upgradeCost(b: Building): Cost | null {
 export function castleRequirement(c: Castle) {
   const target = castleLevel(c) + 1;
   const min = target - 1;
-  const others = c.buildings.filter((b) => b.kind !== "castle");
+  const others = c.buildings.filter((b) => b.kind !== "castle" && !DECOR.has(b.kind));
   const ready = others.filter((b) => b.level >= min).length;
   const needed = Math.max(1, Math.ceil(others.length * 0.75));
   return {

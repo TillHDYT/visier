@@ -1,8 +1,18 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import {
+  Anvil,
   ArrowLeft,
   ArrowUp,
+  Beer,
+  BookOpen,
   Castle as CastleIcon,
+  Church,
+  Droplets,
+  Fence,
+  Flower2,
+  ShieldHalf,
+  Store,
+  Warehouse,
   Check,
   Coins,
   Factory,
@@ -73,11 +83,26 @@ const ICON: Record<BuildingKind, typeof House> = {
   mine: Pickaxe,
   coal: Factory,
   goldmine: Gem,
+  barracks: ShieldHalf,
+  market: Store,
+  tavern: Beer,
+  academy: BookOpen,
+  chapel: Church,
+  storehouse: Warehouse,
+  smithy: Anvil,
+  stable: Fence,
+  fountain: Droplets,
+  garden: Flower2,
 };
 
 const RES_ICON: Record<Resource, typeof Coins> = { gold: Coins, food: Wheat, stone: Mountain, coal: Flame };
 
-const BUILD_ORDER: BuildingKind[] = ["goldmine", "field", "farm", "mine", "coal", "house", "tower"];
+/** Baumenü in drei Reitern, wie in Aufbauspielen üblich. */
+const BUILD_TABS: { name: string; kinds: BuildingKind[] }[] = [
+  { name: "Rohstoffe", kinds: ["goldmine", "market", "field", "farm", "mine", "coal"] },
+  { name: "Militär", kinds: ["tower", "barracks", "house"] },
+  { name: "Stadt", kinds: ["tavern", "academy", "chapel", "storehouse", "smithy", "stable", "fountain", "garden"] },
+];
 
 const BLURB: Record<BuildingKind, string> = {
   castle:
@@ -89,6 +114,16 @@ const BLURB: Record<BuildingKind, string> = {
   mine: "Bricht Stein für Upgrades.",
   coal: "Brennt Kohle für hohe Stufen.",
   goldmine: "Fördert Gold – auch wenn du nicht spielst.",
+  barracks: "Stellt viele starke Verteidiger bei Angriffen.",
+  market: "Händler bringen Gold, auch wenn du nicht spielst.",
+  tavern: "Gasthaus mit Biergarten – Leben in der Stadt.",
+  academy: "Gelehrtenhaus mit Turm und Bibliothek.",
+  chapel: "Kirchlein mit Glockenturm.",
+  storehouse: "Großes Lager mit Kisten und Fässern.",
+  smithy: "Schmiede mit Esse, Amboss und Rauch.",
+  stable: "Stall mit Koppel und Heu.",
+  fountain: "Brunnen für jeden Platz.",
+  garden: "Gepflegter Garten mit Hecken und Blumen.",
 };
 
 function fmt(n: number) {
@@ -116,6 +151,7 @@ export function CastleScreen({ meta, onMeta, onClose }: Props) {
   const [placing, setPlacing] = useState<PlaceView | null>(null);
   const [raid, setRaid] = useState<RaidView | null>(null);
   const [sheet, setSheet] = useState(false);
+  const [tab, setTab] = useState(0);
   const [toast, setToast] = useState<{ text: string; n: number } | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [failed, setFailed] = useState(false);
@@ -432,8 +468,22 @@ export function CastleScreen({ meta, onMeta, onClose }: Props) {
                 <X size={18} strokeWidth={2.6} />
               </button>
             </div>
+            <div className="kingdom-tabs" role="tablist">
+              {BUILD_TABS.map((t, i) => (
+                <button
+                  key={t.name}
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === i}
+                  className={tab === i ? "chapter on" : "chapter"}
+                  onClick={() => setTab(i)}
+                >
+                  <span className="font-display text-base leading-none">{t.name}</span>
+                </button>
+              ))}
+            </div>
             <ul className="kingdom-list">
-              {BUILD_ORDER.map((kind) => {
+              {BUILD_TABS[tab].kinds.map((kind) => {
                 const Icon = ICON[kind];
                 const n = countOf(castle, kind);
                 const max = limitFor(kind, level);
